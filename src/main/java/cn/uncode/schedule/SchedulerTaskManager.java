@@ -65,11 +65,6 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
      */
     private boolean start = true;
 
-    /**
-     * 是否注册成功
-     */
-    private boolean isScheduleServerRegister = true;
-
     private static ApplicationContext applicationcontext;
 
     private Map<String, Boolean> isOwnerMap = new ConcurrentHashMap<String, Boolean>();
@@ -243,9 +238,6 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
                     boolean isOwner = false;
                     boolean isRunning = true;
                     try {
-                        if (!isScheduleServerRegister) {
-                            Thread.sleep(1000);
-                        }
                         if (zkManager.checkZookeeperState()) {
                             isOwner = schedulerServer.isOwner(name, currenScheduleServer.getUuid());
                             isOwnerMap.put(name, isOwner);
