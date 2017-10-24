@@ -11,9 +11,11 @@ import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.util.CollectionUtils;
 
 import java.sql.Timestamp;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * 任务器操作实现类
@@ -25,6 +27,7 @@ public class SchedulerServerForZookeeper implements ISchedulerServer {
 
     private static final transient Logger LOG = LoggerFactory.getLogger(SchedulerServerForZookeeper.class);
     private Gson gson = new GsonBuilder().setDateFormat("yyyy-MM-dd HH:mm:ss").create();
+    private AtomicInteger pos = new AtomicInteger(0);
 
     private String pathServer;
     private String pathTask;
@@ -127,7 +130,7 @@ public class SchedulerServerForZookeeper implements ISchedulerServer {
     }
 
     @Override
-    public void assignTask(String currentUuid, List<String> taskServerList) {
+    public void assignTask(String currentUuid, List<String> taskServerList, String taskTrigger) {
         LOG.info("当前server:["+ currentUuid + "]:开始重新分配任务......");
         if (!this.isLeader(currentUuid, taskServerList)) {
             LOG.info("当前server:["+ currentUuid + "]:不是负责任务分配的Leader,直接返回");
@@ -154,7 +157,7 @@ public class SchedulerServerForZookeeper implements ISchedulerServer {
 
                         List<String> taskServerIds = this.zkManager.getZooKeeper().getChildren(taskPath, false);
                         if (null == taskServerIds || taskServerIds.size() == 0) {
-                            assignServer2Task(taskServerList, taskPath);
+                            assignServer2Task(taskServerList, taskPath, taskTrigger, taskName);
                         } else {
                             boolean hasAssignSuccess = false;
                             for (String serverId : taskServerIds) {
@@ -170,7 +173,7 @@ public class SchedulerServerForZookeeper implements ISchedulerServer {
                                 ZKTools.deleteTree(this.zkManager.getZooKeeper(), taskPath + "/" + serverId);
                             }
                             if (!hasAssignSuccess) {
-                                assignServer2Task(taskServerList, taskPath);
+                                assignServer2Task(taskServerList, taskPath, taskTrigger, taskName);
                             }
                         }
 
@@ -186,18 +189,48 @@ public class SchedulerServerForZookeeper implements ISchedulerServer {
         }
     }
 
-    private void assignServer2Task(List<String> taskServerList, String taskPath) throws Exception {
-        Random random = new Random();
-        int index = random.nextInt(taskServerList.size());
-        String serverId = taskServerList.get(index);
+    /**
+     * 重新分配任务给server 重新分配成功后,需要触发taskTrigger
+     * 解决多server情况下,非leader节点不能动态检查本地任务
+     *
+     * @param taskServerList 待分配server列表
+     * @param taskPath 任务path
+     * @param taskTrigger 任务trigger
+     * @param taskName 任务名称
+     * @throws Exception 异常信息
+     */
+    private void assignServer2Task(List<String> taskServerList, String taskPath, String taskTrigger, String taskName) throws Exception {
+        if (pos.intValue() > taskServerList.size() - 1) {
+            pos.set(0);
+        }
+        String serverId = taskServerList.get(pos.intValue());
+        pos.incrementAndGet();
         try {
             if (this.zkManager.getZooKeeper().exists(taskPath, false) != null) {
                 this.zkManager.getZooKeeper().create(taskPath + "/" + serverId, null, this.zkManager.getAcl(), CreateMode.PERSISTENT);
-
+                triggerTaskModified(taskTrigger, taskName);
                 LOG.info("成功分配任务 [" + taskPath + "]" + " 给 server [" + serverId + "]");
             }
         } catch (Exception e) {
             LOG.error("assign task error", e);
+        }
+    }
+
+    /**
+     * 需要触发taskTrigger, taskTrigger下最多保留20个子节点,达到20个就删除之前的
+     *
+     * @param taskTrigger taskTrigger节点
+     * @param taskName 任务名称
+     * @throws Exception 异常信息
+     */
+    private void triggerTaskModified(String taskTrigger, String taskName) throws Exception {
+        if (this.zkManager.getZooKeeper().exists(taskTrigger, false) != null) {
+            List<String> children = this.zkManager.getZooKeeper().getChildren(taskTrigger, false);
+            if (!CollectionUtils.isEmpty(children) && children.size() > 20) {
+                ZKTools.deleteTree(this.zkManager.getZooKeeper(), taskTrigger);
+            }
+
+            this.zkManager.getZooKeeper().create(taskTrigger + "/" + taskName, null, this.zkManager.getAcl(), CreateMode.PERSISTENT_SEQUENTIAL);
         }
     }
 

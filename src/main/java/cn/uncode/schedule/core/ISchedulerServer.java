@@ -29,11 +29,11 @@ public interface ISchedulerServer {
 
     /**
      * 分配任务
-     *
      * @param currentUuid 当前服务器uuid
-     * @param taskServerList 所有服务器uuid
+     * @param taskServerList 所有服务器uuid(过滤后的)
+     * @param taskTrigger 任务变更触发节点 用于在leader重新分配任务后,检查本地任务
      */
-    void assignTask(String currentUuid, List<String> taskServerList);
+    void assignTask(String currentUuid, List<String> taskServerList, String taskTrigger);
 
     /**
      * 注册服务器

@@ -22,7 +22,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -41,11 +42,24 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
 
     private static final String NODE_TASK = "task";
 
+    private static final String NODE_TASK_TRIGGER = "taskTrigger";
+
     private static final String NODE_SERVER = "server";
 
+    /**
+     * server 根节点
+     */
     private String pathServer;
 
+    /**
+     * task 根节点
+     */
     private String pathTask;
+
+    /**
+     * task变更触发节点, 由leader来维护
+     */
+    private String taskTrigger;
 
     private Map<String, String> config;
 
@@ -147,10 +161,12 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
     public void initialData() throws Exception {
         this.pathTask = this.zkManager.getRootPath() + "/" + NODE_TASK;
         this.pathServer = this.zkManager.getRootPath() + "/" + NODE_SERVER;
+        this.taskTrigger = this.zkManager.getRootPath() + "/" + NODE_TASK_TRIGGER;
         // 创建父节点 判断父节点是否可用
         this.zkManager.initial();
-        this.initPathAndWatch(this.pathServer);
-        this.initPathAndWatch(this.pathTask);
+        this.initPathAndWatchTask(this.pathServer);
+        this.initPathAndWatchTask(this.pathTask);
+        this.initPathAndWatchTaskTrigger(this.taskTrigger);
         this.scheduleTask = new ScheduleTaskForZookeeper(this.zkManager, this.pathTask);
         this.schedulerServer = new SchedulerServerForZookeeper(this.zkManager, this.pathServer, this.pathTask);
         if (this.start) {
@@ -160,9 +176,10 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
     }
 
     /**
-     * 初始化并且监听节点
+     * 初始化监听taskTrigger节点 只检查本地任务
+     * 用于在leader重新分配任务之后
      */
-    private void initPathAndWatch(String path) {
+    private void initPathAndWatchTaskTrigger(String path) {
         try {
             if (this.zkManager.getZooKeeper().exists(path, false) == null) {
                 ZKTools.createPath(this.zkManager.getZooKeeper(), path, CreateMode.PERSISTENT, this.zkManager.getAcl());
@@ -178,27 +195,47 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
                         case NodeDataChanged:
                         case NodeChildrenChanged:
                         default:
-                            refreshScheduleServerAndTasks();
+                            checkLocalTask();
                             LOGGER.info("继续下一次监听");
-                            initPathAndWatch(event.getPath());
+                            initPathAndWatchTaskTrigger(event.getPath());
                             break;
                     }
                 }
             });
         } catch (Exception e) {
-            LOGGER.error("initPathServer failed", e);
+            LOGGER.error("initPathAndWatchTaskTrigger failed", e);
         }
     }
 
     /**
-     * 1. 重新分配任务
-     * 2. 检查本地任务
+     * 初始化并且监听节点 server 和 task 变化都需要重新分配任务
      */
-    public void refreshScheduleServerAndTasks() {
-        // 重新分配任务
-        this.assignScheduleTask();
-        // 检查本地任务
-        this.checkLocalTask();
+    private void initPathAndWatchTask(String path) {
+        try {
+            if (this.zkManager.getZooKeeper().exists(path, false) == null) {
+                ZKTools.createPath(this.zkManager.getZooKeeper(), path, CreateMode.PERSISTENT, this.zkManager.getAcl());
+            }
+            this.zkManager.getZooKeeper().getChildren(path, new Watcher() {
+                @Override
+                public void process(WatchedEvent event) {
+                    LOGGER.info("节点变更事件: " + event.getType() + "==========" + event.getPath());
+                    switch (event.getType()) {
+                        case None:
+                        case NodeCreated:
+                        case NodeDeleted:
+                        case NodeDataChanged:
+                        case NodeChildrenChanged:
+                        default:
+                            assignScheduleTask(taskTrigger);
+                            LOGGER.info("继续下一次监听");
+                            initPathAndWatchTask(event.getPath());
+                            break;
+                    }
+                }
+            });
+        } catch (Exception e) {
+            LOGGER.error("initPathAndWatchTask failed", e);
+        }
     }
 
     /**
@@ -207,8 +244,9 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
      * <p>
      * 1、获取任务状态的版本号 2、获取所有的服务器注册信息和任务队列信息 3、清除已经超过心跳周期的服务器注册信息 3、重新计算任务分配
      * 4、更新任务状态的版本号【乐观锁】 5、根系任务队列的分配信息
+     * @param taskTrigger 任务变更触发节点
      */
-    public void assignScheduleTask() {
+    public void assignScheduleTask(String taskTrigger) {
         List<String> serverList = schedulerServer.loadScheduleServerNames();
         //黑名单
         for (String ip : zkManager.getIpBlacklist()) {
@@ -218,7 +256,7 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
             }
         }
         // 设置初始化成功标准，避免在leader转换的时候，新增的线程组初始化失败
-        schedulerServer.assignTask(this.currenScheduleServer.getUuid(), serverList);
+        schedulerServer.assignTask(this.currenScheduleServer.getUuid(), serverList, taskTrigger);
     }
 
     /**
