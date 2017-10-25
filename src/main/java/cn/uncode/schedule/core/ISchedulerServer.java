@@ -64,4 +64,13 @@ public interface ISchedulerServer {
      * @return 所有服务器名称
      */
     List<String> loadScheduleServerNames();
+
+    /**
+     * 触发taskTrigger, taskTrigger下最多保留20个子节点,达到20个就删除之前的
+     *
+     * @param taskTrigger taskTrigger节点
+     * @param taskName 任务名称
+     * @throws Exception 异常信息
+     */
+    void triggerTaskModified(String taskTrigger, String taskName) throws Exception;
 }

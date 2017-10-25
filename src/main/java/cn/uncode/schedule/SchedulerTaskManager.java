@@ -517,4 +517,8 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
     public String getPathTask() {
         return pathTask;
     }
+
+    public String getTaskTrigger() {
+        return taskTrigger;
+    }
 }

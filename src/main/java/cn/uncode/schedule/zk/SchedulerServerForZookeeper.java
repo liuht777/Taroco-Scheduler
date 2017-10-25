@@ -216,14 +216,8 @@ public class SchedulerServerForZookeeper implements ISchedulerServer {
         }
     }
 
-    /**
-     * 需要触发taskTrigger, taskTrigger下最多保留20个子节点,达到20个就删除之前的
-     *
-     * @param taskTrigger taskTrigger节点
-     * @param taskName 任务名称
-     * @throws Exception 异常信息
-     */
-    private void triggerTaskModified(String taskTrigger, String taskName) throws Exception {
+    @Override
+    public void triggerTaskModified(String taskTrigger, String taskName) throws Exception {
         if (this.zkManager.getZooKeeper().exists(taskTrigger, false) != null) {
             List<String> children = this.zkManager.getZooKeeper().getChildren(taskTrigger, false);
             if (!CollectionUtils.isEmpty(children) && children.size() > 20) {
