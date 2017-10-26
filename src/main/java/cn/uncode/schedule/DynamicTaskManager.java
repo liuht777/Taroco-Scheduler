@@ -176,20 +176,4 @@ public class DynamicTaskManager {
         scheduledMethodRunnable = new ScheduledMethodRunnable(bean, method, params, extKeySuffix, onlyOne);
         return scheduledMethodRunnable;
     }
-
-    /**
-     * 检查 动态任务之外的任务类型 是否已经在缓存任务当中
-     * 解决删除非动态任务的时候,taskWrapper() 包装的任务仍然会执行的问题
-     *
-     * @param taskDefine      任务详情
-     * @param scheduledFuture 任务回调 可用于关闭任务
-     */
-    public static void checkTask(TaskDefine taskDefine, ScheduledFuture scheduledFuture) {
-        if (taskDefine.getType() != null && TaskDefine.TYPE_SPRING_TASK.equals(taskDefine.getType())) {
-            if (!SCHEDULE_FUTURES.containsKey(taskDefine.stringKey())) {
-                SCHEDULE_FUTURES.put(taskDefine.stringKey(), scheduledFuture);
-                TASKS.put(taskDefine.stringKey(), taskDefine);
-            }
-        }
-    }
 }
