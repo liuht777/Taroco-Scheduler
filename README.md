@@ -22,8 +22,10 @@
 5. 关于重新分配任务，将之前的随机机制改为轮询机制。
 6. 对于非动态添加的任务，也就是注解或配置文件配置的任务会在容器启动通过组件定义的方式启动。但是在删除此类任务时，没有真正的删除，taskWrapper任然会定时的执行。 解决了这个bug（tag 2.0.2中已经将本地静态任务@Scheduled 或 xml配置的定时任务从集群的动态管理中移除，关于本地静态任务可采用分布式锁的方式实现简单的分布式控制）。
 7. 关于UncodeScheduleAutoConfiguration中SchedulerTaskManager的定义。将SchedulerTaskManager的Bean名称定义为taskScheduler，这样可以阻止Spring Task初始化名为taskScheduler的bean，以免重复加载。当然你也可以不这么做，因为SchedulerTaskManager继承了ThreadPoolTaskScheduler，我们动态添加的任务都是通过SchedulerTaskManager添加的。
+8. 修复了原来的一些bug,优化了文档。代码实战中的代码，都是经过验证,运行正常。src/test中,有关于xml配置的测试用例。
 
 说明：
+* 组件依赖zookeeper。属性配置中zkUsername以及zkPassword并不是zk的账号密码，是默认任务管理界面的账号密码。
 * 单节点故障时需要业务保障数据完整性或幂等性。
 * Spring Task是Spring 3.0之后自主开发的定时任务工具。
 * Spring Task默认不是并行执行，需要添加一个名为taskScheduler的Bean，采用ThreadPoolTaskScheduler或其他线程池的Scheduler实现。Spring Task默认采用ThreadPoolTaskScheduler
@@ -148,7 +150,7 @@ uncode:
 ```
 @SpringBootApplication
 @EnableScheduling
-// 这个也是可选的,如果你不需要默认的任务管理界面的话
+// 这个也是可选的,如果你不需要默认的任务管理界面的话(/uncode/schedule)
 // 强烈建议自己去实现这个任务管理功能
 @ServletComponentScan("cn.uncode.schedule")
 public class UncodeScheduleApplication {
