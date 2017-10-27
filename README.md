@@ -20,7 +20,7 @@
 3. 参照Alibaba代码规范对代码进行了大量重构优化，更具有可读性。
 4. 删除了默认1s的心跳机制（主要作用：刷新server、重新分配任务、检查当前serve可执行的任务），采用watcher的方式，对server节点和task节点进行动态监听，达到分配任务的目的。重新分配任务会触发taskTrigger节点watch事件，解决集群环境下非leader节点不能动态检查本地任务的问题。进一步提升性能。
 5. 关于重新分配任务，将之前的随机机制改为轮询机制。
-6. 对于非动态添加的任务，也就是注解或配置文件配置的任务会在容器启动通过组件定义的方式启动。但是在删除此类任务时，没有真正的删除，taskWrapper任然会定时的执行。 解决了这个bug。
+6. 对于非动态添加的任务，也就是注解或配置文件配置的任务会在容器启动通过组件定义的方式启动。但是在删除此类任务时，没有真正的删除，taskWrapper任然会定时的执行。 解决了这个bug（tag 2.0.2中已经将本地静态任务@Scheduled 或 xml配置的定时任务从集群的动态管理中移除，关于本地静态任务可采用分布式锁的方式实现简单的分布式控制）。
 7. 关于UncodeScheduleAutoConfiguration中SchedulerTaskManager的定义。将SchedulerTaskManager的Bean名称定义为taskScheduler，这样可以阻止Spring Task初始化名为taskScheduler的bean，以免重复加载。当然你也可以不这么做，因为SchedulerTaskManager继承了ThreadPoolTaskScheduler，我们动态添加的任务都是通过SchedulerTaskManager添加的。
 
 说明：
@@ -28,6 +28,7 @@
 * Spring Task是Spring 3.0之后自主开发的定时任务工具。
 * Spring Task默认不是并行执行，需要添加一个名为taskScheduler的Bean，采用ThreadPoolTaskScheduler或其他线程池的Scheduler实现。Spring Task默认采用ThreadPoolTaskScheduler
 * 所有的任务都是基于Spring Bean的方式。可以通过定义一个或多个任务模板（Bean 的方式），通过使用任务后缀可以动态的添加多个该模板的任务实例，你只需要传递不同的参数即可。
+* 经过改动后，此组件更加适用于，模板化的定时任务。我们可以事先定义很少的任务模板（Spring Bean），然后通过业务传递不同参数，指定后缀，批量生成定时任务。
 
 
 ------------------------------------------------------------------------
@@ -205,6 +206,9 @@ ConsoleManager.queryScheduleTask();
 
 ## 使用API或后台添加任务(Spring Bean的方式)
 通过获得我们定义的SchedulerTaskManager这个bean,依然可以动态的添加任务。这里就不展示了。
+
+# 待优化的点
+1. 动态扩展时重新分配任务。目前虽然已经改为了轮询的分配机制，但是前提是你要事先将集群中的每个节点都启动起来，当我们新加一个server的时候，不能将原有的任务进行重新分配。
 
 # 关于
 
