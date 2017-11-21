@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class SchedulerServerForZookeeper implements ISchedulerServer {
 
     private static final transient Logger LOG = LoggerFactory.getLogger(SchedulerServerForZookeeper.class);
-    private Gson gson = new GsonBuilder().setDateFormat("yyyy-MM-dd HH:mm:ss").create();
+    private Gson gson = new GsonBuilder().create();
     private AtomicInteger pos = new AtomicInteger(0);
 
     private String pathServer;

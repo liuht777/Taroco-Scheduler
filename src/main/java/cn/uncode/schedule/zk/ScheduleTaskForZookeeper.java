@@ -22,7 +22,7 @@ import java.util.List;
 public class ScheduleTaskForZookeeper implements IScheduleTask {
     private static final transient Logger LOG = LoggerFactory.getLogger(ScheduleTaskForZookeeper.class);
 
-    private Gson gson = new GsonBuilder().setDateFormat("yyyy-MM-dd HH:mm:ss").create();
+    private Gson gson = new GsonBuilder().create();
     private ZKManager zkManager;
     private String pathTask;
 
