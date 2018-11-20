@@ -1,6 +1,6 @@
-package cn.uncode.schedule.config;
+package cn.taroco.scheduler.config;
 
-import cn.uncode.schedule.zk.ZKManager.KEYS;
+import cn.taroco.scheduler.zk.ZKManager;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -15,7 +15,7 @@ import java.util.Map;
  */
 @ConfigurationProperties(prefix = "uncode.schedule",ignoreInvalidFields = true)
 public class UncodeScheduleConfig{
-	
+
 	private String zkConnect;
 	private String rootPath = "/uncode/schedule";
 	private int zkSessionTimeout = 60000;
@@ -23,26 +23,26 @@ public class UncodeScheduleConfig{
 	private String zkPassword;
 	private List<String> ipBlackList;
 	private int poolSize = 10;
-	
+
 	private List<String> quartzBean;
 	private List<String> quartzMethod;
 	private List<String> quartzCronExpression;
-	
-	
+
+
 	public Map<String, String> getConfig(){
 		Map<String, String> properties = new HashMap<>(16);
-		properties.put(KEYS.zkConnectString.key, zkConnect);
+		properties.put(ZKManager.KEYS.zkConnectString.key, zkConnect);
 		if(StringUtils.isNotBlank(rootPath)){
-			properties.put(KEYS.rootPath.key, rootPath);
+			properties.put(ZKManager.KEYS.rootPath.key, rootPath);
 		}
 		if(zkSessionTimeout > 0){
-			properties.put(KEYS.zkSessionTimeout.key, zkSessionTimeout+"");
+			properties.put(ZKManager.KEYS.zkSessionTimeout.key, zkSessionTimeout+"");
 		}
 		if(StringUtils.isNotBlank(zkUsername)){
-			properties.put(KEYS.userName.key, zkUsername);
+			properties.put(ZKManager.KEYS.userName.key, zkUsername);
 		}
 		if(StringUtils.isNotBlank(zkPassword)){
-			properties.put(KEYS.password.key, zkPassword);
+			properties.put(ZKManager.KEYS.password.key, zkPassword);
 		}
 		StringBuilder sb = new StringBuilder();
 		if(ipBlackList != null && ipBlackList.size() > 0){
@@ -51,15 +51,15 @@ public class UncodeScheduleConfig{
 			}
 			ipBlackList.remove(sb.lastIndexOf(","));
 		}
-		properties.put(KEYS.ipBlacklist.key, sb.toString());
+		properties.put(ZKManager.KEYS.ipBlacklist.key, sb.toString());
 
         if(poolSize > 0){
-            properties.put(KEYS.poolSize.key, poolSize+"");
+            properties.put(ZKManager.KEYS.poolSize.key, poolSize+"");
         }
 		return properties;
 	}
-	
-	
+
+
 	public String getZkConnect() {
 		return zkConnect;
 	}

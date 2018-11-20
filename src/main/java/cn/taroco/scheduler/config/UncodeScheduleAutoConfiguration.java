@@ -1,6 +1,6 @@
-package cn.uncode.schedule.config;
+package cn.taroco.scheduler.config;
 
-import cn.uncode.schedule.SchedulerTaskManager;
+import cn.taroco.scheduler.SchedulerTaskManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,9 +17,9 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 @EnableConfigurationProperties({UncodeScheduleConfig.class})
 public class UncodeScheduleAutoConfiguration {
-	
+
 	private static final Logger LOGGER = LoggerFactory.getLogger(UncodeScheduleAutoConfiguration.class);
-	
+
 	@Autowired
 	private UncodeScheduleConfig uncodeScheduleConfig;
 

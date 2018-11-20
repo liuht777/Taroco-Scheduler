@@ -1,8 +1,8 @@
-package cn.uncode.schedule.test;
+package cn.taroco.scheduler.test;
 
-import cn.uncode.schedule.ConsoleManager;
-import cn.uncode.schedule.SchedulerTaskManager;
-import cn.uncode.schedule.core.TaskDefine;
+import cn.taroco.scheduler.ConsoleManager;
+import cn.taroco.scheduler.SchedulerTaskManager;
+import cn.taroco.scheduler.core.TaskDefine;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;

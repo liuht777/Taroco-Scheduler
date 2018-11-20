@@ -3,20 +3,31 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+    <groupId>taroco.cn</groupId>
+    <artifactId>taroco-scheduler</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <name>taroco-scheduler</name>
+    <description>Spring Boot And Spring Task Simple Scheduler.</description>
+    <url>https://github.com/liuht777/taroco-scheduler</url>
 
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>1.4.6.RELEASE</version>
+        <version>2.0.4.RELEASE</version>
     </parent>
-    <groupId>cn.uncode</groupId>
-    <artifactId>uncode-schedule</artifactId>
-    <version>1.0.3</version>
-    <packaging>jar</packaging>
 
-    <name>uncode-schedule</name>
-    <description>Job scheduler.</description>
-    <url>https://git.oschina.net/uncode/uncode-schedule</url>
+    <scm>
+        <url>https://github.com/liuht777/taroco-scheduler.git</url>
+    </scm>
+
+    <developers>
+        <developer>
+            <name>liuht</name>
+            <url>https://github.com/liuht777</url>
+        </developer>
+    </developers>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -37,46 +48,40 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-configuration-processor</artifactId>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-tx</artifactId>
-        </dependency>
-        <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-context-support</artifactId>
         </dependency>
-
-        <!-- ==================== -->
-        <!-- other -->
-        <!-- ==================== -->
+        <!-- lang3工具包 -->
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
             <version>${commons.lang3.version}</version>
         </dependency>
-
+        <!-- zookeeper依赖 -->
         <dependency>
-            <groupId>org.apache.zookeeper</groupId>
-            <artifactId>zookeeper</artifactId>
-            <version>3.4.6</version>
+            <groupId>org.springframework.integration</groupId>
+            <artifactId>spring-integration-zookeeper</artifactId>
         </dependency>
-
+        <!-- spring-boot-configuration-processor -->
         <dependency>
-            <groupId>com.google.code.gson</groupId>
-            <artifactId>gson</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <!-- lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+        </dependency>
+        <!-- spring boot test -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
-    <!-- 代码 deploy到哪里 -->
+    <!-- 发布目标仓库 -->
     <distributionManagement>
         <repository>
             <id>lensyn-releases</id>
@@ -106,7 +111,7 @@
             <!-- 要将源码放上去，需要加入这个插件 -->
             <plugin>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>2.1</version>
+                <version>3.0.1</version>
                 <configuration>
                     <attach>true</attach>
                 </configuration>

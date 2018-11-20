@@ -1,7 +1,7 @@
-package cn.uncode.schedule.web;
+package cn.taroco.scheduler.web;
 
-import cn.uncode.schedule.ConsoleManager;
-import cn.uncode.schedule.core.TaskDefine;
+import cn.taroco.scheduler.ConsoleManager;
+import cn.taroco.scheduler.core.TaskDefine;
 import org.apache.commons.lang3.StringUtils;
 
 import javax.servlet.ServletException;
@@ -25,13 +25,13 @@ import java.util.List;
 public class ManagerServlet extends HttpServlet{
 
 	/**
-	 * 
+	 *
 	 */
 	private static final long serialVersionUID = 8160082230341182715L;
-	
+
 	private static final String UNCODE_SESSION_KEY = "uncode_key_session";
-	
-	private static final String HEAD = 
+
+	private static final String HEAD =
 		    "<!DOCTYPE html>\n"+
 		    "<html>\n"+
 		    "<head>\n"+
@@ -45,8 +45,8 @@ public class ManagerServlet extends HttpServlet{
 		    "\t  <script type=\"text/javascript\" src=\"http://apps.bdimg.com/libs/jquery/2.1.4/jquery.min.js\"></script>\n"+
 		    "\t  <script type=\"text/javascript\" src=\"http://cdn.bootcss.com/bootstrap/3.3.4/js/bootstrap.min.js\"></script>\n"+
 			"</head>\n";
-	
-	private static final String SCRIPT = 
+
+	private static final String SCRIPT =
 			"\t	<script type=\"text/javascript\">\n"+
 			"\t		$(document).ready(function(){\n"+
 			"\t			$(\"#myModal\").on('show.bs.modal', function(event){\n"+
@@ -60,7 +60,7 @@ public class ManagerServlet extends HttpServlet{
 			"\t			document.getElementById(\"addform\").submit();\n"+
 			"\t		}\n"+
 			"\t	</script>";
-	private static final String SCRIPT_LOGIN = 
+	private static final String SCRIPT_LOGIN =
 			"\t	<script type=\"text/javascript\">\n"+
 			"\t		function loginSubmit(){\n"+
 			"\t		    var accout = $(\"#account\").val(); \n"+
@@ -77,8 +77,8 @@ public class ManagerServlet extends HttpServlet{
 			"\t			document.getElementById(\"loginform\").submit();\n"+
 			"\t		}\n"+
 			"\t	</script>";
-	
-	private static final String PAGE_LOGIN_STYLE = 
+
+	private static final String PAGE_LOGIN_STYLE =
 			"\t <style>	\n"+
 			"\t ul{\n"+
 			"\t 	list-style-type: none;\n"+
@@ -126,8 +126,8 @@ public class ManagerServlet extends HttpServlet{
 			"\t 	letter-spacing: 14px;\n"+
 			"\t }\n"+
 			"\t </style>\n";
-			
-	private static final String PAGE_LOGIN_HTML_1 = 
+
+	private static final String PAGE_LOGIN_HTML_1 =
 			"\t <body>\n"+
 			"\t <script src='http://git.oschina.net/uncode/uncode-schedule/star_widget_preview'></script>"+
 			"\t <div class=\"loginContDiv\">\n"+
@@ -138,8 +138,8 @@ public class ManagerServlet extends HttpServlet{
 			"\t 		<li class=\"loginContLi\"> \n"+
 			"\t 			<div><form id=\"loginform\" method=\"post\" action=\"";
 
-			
-	private static final String PAGE_LOGIN_HTML_2 = 
+
+	private static final String PAGE_LOGIN_HTML_2 =
 			"\">\n"+
 			"\t 				<input  type=\"text\" name =\"account\" id=\"account\" placeholder=\"帐号\" /><br/><br/>\n"+
 			"\t 				<input  class=\"txt\" type=\"password\" name=\"password\" id=\"password\" placeholder=\"密码\" /><br/><br/>\n"+
@@ -153,9 +153,9 @@ public class ManagerServlet extends HttpServlet{
 
 
 			"\t </body>";
-	
-	
-	private static final String PAGE = 
+
+
+	private static final String PAGE =
 			"\t <body>\n"+
 			"\t <div class=\"container-fluid\">\n"+
 			"\t 	<h1>Uncode-Schedule管理页面</h1>\n"+
@@ -276,8 +276,8 @@ public class ManagerServlet extends HttpServlet{
 			"\t 	</div>\n"+
 			"\t </div>\n"+
 			"\t </body>";
-	
-	
+
+
 	@Override
 	protected void service(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		String login = (String) request.getSession().getAttribute(UNCODE_SESSION_KEY);
@@ -294,8 +294,8 @@ public class ManagerServlet extends HttpServlet{
 			} catch (Exception e) {
 			}
 			response.setContentType("text/html;charset=UTF-8");
-	        PrintWriter out = response.getWriter();  
-			out.write(HEAD); 
+	        PrintWriter out = response.getWriter();
+			out.write(HEAD);
 			out.write(SCRIPT_LOGIN);
 			out.write(PAGE_LOGIN_STYLE);
 			out.write(PAGE_LOGIN_HTML_1 + request.getSession().getServletContext().getContextPath()+"/uncode/schedule" + PAGE_LOGIN_HTML_2);
@@ -352,13 +352,13 @@ public class ManagerServlet extends HttpServlet{
 				}
 				String startTime = request.getParameter("startTime");
 				if(StringUtils.isNotEmpty(startTime)){
-					SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss SSS");  
+					SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss SSS");
 				    Date date = null;
 					try {
 						date = sdf.parse(startTime);
 					} catch (ParseException e) {
 						e.printStackTrace();
-					}  
+					}
 					taskDefine.setStartTime(date);
 				}else{
 					taskDefine.setStartTime(new Date());
@@ -380,7 +380,7 @@ public class ManagerServlet extends HttpServlet{
 				List<String> servers = ConsoleManager.getSchedulerTaskManager().getSchedulerServer().loadScheduleServerNames();
 				if(servers != null){
 					response.setContentType("text/html;charset=UTF-8");
-			        PrintWriter out = response.getWriter();  
+			        PrintWriter out = response.getWriter();
 			        StringBuffer sb = new StringBuffer();
 		    		for(int i=0; i< servers.size();i++){
 		    			String ser = servers.get(i);
@@ -394,7 +394,7 @@ public class ManagerServlet extends HttpServlet{
 						}
 		    			sb.append("</tr>");
 		    		}
-		    		
+
 		    		List<TaskDefine> tasks = ConsoleManager.queryScheduleTask();
 		    		StringBuffer sbTask = new StringBuffer();
 		    		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -454,14 +454,14 @@ public class ManagerServlet extends HttpServlet{
 		    		}
 		    		 out.write(HEAD);
 		    		 out.write(SCRIPT);
-		    		 out.write(String.format(PAGE, request.getSession().getServletContext().getContextPath()+"/uncode/schedule", 
+		    		 out.write(String.format(PAGE, request.getSession().getServletContext().getContextPath()+"/uncode/schedule",
 		    				sb.toString(), sbTask.toString()));
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
 		}
-		
+
 	}
 
 }

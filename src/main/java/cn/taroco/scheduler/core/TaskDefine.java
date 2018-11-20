@@ -1,4 +1,4 @@
-package cn.uncode.schedule.core;
+package cn.taroco.scheduler.core;
 
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -11,75 +11,75 @@ import java.util.Date;
  *
  */
 public class TaskDefine {
-	
+
 	public static final String TYPE_UNCODE_TASK = "uncode-task";
 	public static final String TYPE_SPRING_TASK = "spring-task";
 
 	public static final String STATUS_ERROR = "error";
 	public static final String STATUS_STOP = "stop";
 	public static final String STATUS_RUNNING = "running";
-	
+
     /**
      * 目标bean
      */
     private String targetBean;
-    
+
     /**
      * 目标方法
      */
     private String targetMethod;
-    
+
     /**
      * cron表达式
      */
     private String cronExpression;
-	
+
 	/**
 	 * 开始时间
 	 */
 	private Date startTime;
-	
+
 	/**
 	 * 周期（毫秒）
 	 */
 	private long period;
-	
+
 	/**
 	 * 参数
 	 */
 	private String params;
-	
+
 	/**
 	 * 类型
 	 */
 	private String type;
-	
+
 	/**
 	 * 后台显示参数，当前任务执行节点
 	 */
 	private String currentServer;
-	
+
 	/**
 	 * 后台显示参数，无业务内含
 	 */
 	private int runTimes;
-	
+
 	/**
 	 * 后台显示参数，无业务内含
 	 */
 	private long lastRunningTime;
-	
+
 	/**
 	 * 后台显示参数，无业务内含
 	 */
 	private String status = STATUS_RUNNING;
-	
+
 	/**
 	 * key的后缀
 	 */
 	private String extKeySuffix;
-	
-	
+
+
 	public boolean begin(Date sysTime) {
 		return null != sysTime && sysTime.after(startTime);
 	}
@@ -95,7 +95,7 @@ public class TaskDefine {
 	public String getTargetMethod() {
 		return targetMethod;
 	}
-	
+
 	public String getTargetMethod4Show(){
 		if(StringUtils.isNotBlank(extKeySuffix)){
 			return targetMethod + "-" + extKeySuffix;
@@ -144,7 +144,7 @@ public class TaskDefine {
 	public void setCurrentServer(String currentServer) {
 		this.currentServer = currentServer;
 	}
-	
+
 	public String stringKey(){
 		String result = null;
 		boolean notBlank = StringUtils.isNotBlank(getTargetBean()) && StringUtils.isNotBlank(getTargetMethod());
@@ -212,7 +212,7 @@ public class TaskDefine {
 	public void setExtKeySuffix(String extKeySuffix) {
 		this.extKeySuffix = extKeySuffix;
 	}
-	
+
 	public void valueOf(TaskDefine taskDefine){
 		if(StringUtils.isNotBlank(taskDefine.getTargetBean())){
 			this.targetBean = taskDefine.getTargetBean();
@@ -264,7 +264,7 @@ public class TaskDefine {
         result = prime * result + ((extKeySuffix == null) ? 0 : extKeySuffix.hashCode());
         return result;
     }
-    
+
 	@Override
     public boolean equals(Object obj) {
         if (obj == null || !(obj instanceof TaskDefine)) {
@@ -294,8 +294,8 @@ public class TaskDefine {
         }
         return this.period == ou.period;
     }
-	
-	
-	
-	
+
+
+
+
 }

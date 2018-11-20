@@ -1,11 +1,10 @@
-package cn.uncode.schedule;
+package cn.taroco.scheduler;
 
-import cn.uncode.schedule.core.ScheduledMethodRunnable;
-import cn.uncode.schedule.core.TaskDefine;
-import cn.uncode.schedule.util.ScheduleUtil;
+import cn.taroco.scheduler.core.ScheduledMethodRunnable;
+import cn.taroco.scheduler.core.TaskDefine;
+import cn.taroco.scheduler.util.ScheduleUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.aop.framework.AopProxyUtils;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.scheduling.Trigger;
@@ -25,17 +24,18 @@ import java.util.concurrent.ScheduledFuture;
  *
  * @author liuht
  */
+@Slf4j
 public class DynamicTaskManager {
 
-    private static final transient Logger LOGGER = LoggerFactory.getLogger(DynamicTaskManager.class);
     /**
      * 缓存 scheduleKey 与 ScheduledFuture,删除任务时可以优雅的关闭任务
      */
-    private static final Map<String, ScheduledFuture<?>> SCHEDULE_FUTURES = new ConcurrentHashMap<String, ScheduledFuture<?>>();
+    private static final Map<String, ScheduledFuture<?>> SCHEDULE_FUTURES = new ConcurrentHashMap<>();
+
     /**
      * 缓存 scheduleKey 与 TaskDefine任务具体信息
      */
-    private static final Map<String, TaskDefine> TASKS = new ConcurrentHashMap<String, TaskDefine>();
+    private static final Map<String, TaskDefine> TASKS = new ConcurrentHashMap<>();
 
     /**
      * 启动定时任务
@@ -44,11 +44,11 @@ public class DynamicTaskManager {
      * @param currentTime 时间
      */
     public static void scheduleTask(TaskDefine taskDefine, Date currentTime) {
-        LOGGER.info("开始启动定时任务: "+ taskDefine.stringKey());
+        log.info("开始启动定时任务: " + taskDefine.stringKey());
         boolean newTask = true;
         if (SCHEDULE_FUTURES.containsKey(taskDefine.stringKey())) {
             if (taskDefine.equals(TASKS.get(taskDefine.stringKey()))) {
-                LOGGER.info("定时任务已经存在: "+ taskDefine.stringKey() + ", 不需要重新构建");
+                log.info("定时任务已经存在: " + taskDefine.stringKey() + ", 不需要重新构建");
                 newTask = false;
             }
         }
@@ -57,7 +57,7 @@ public class DynamicTaskManager {
             scheduleTask(taskDefine.getTargetBean(), taskDefine.getTargetMethod(),
                     taskDefine.getCronExpression(), taskDefine.getStartTime(), taskDefine.getPeriod(),
                     taskDefine.getParams(), taskDefine.getExtKeySuffix(), false);
-            LOGGER.info("成功添加动态任务: "+ taskDefine.stringKey());
+            log.info("成功添加动态任务: " + taskDefine.stringKey());
         }
     }
 
@@ -74,7 +74,7 @@ public class DynamicTaskManager {
                 SCHEDULE_FUTURES.get(name).cancel(true);
                 SCHEDULE_FUTURES.remove(name);
                 TASKS.remove(name);
-                LOGGER.info("清理定时任务: "+ name);
+                log.info("清理定时任务: " + name);
             }
         }
     }
@@ -117,16 +117,16 @@ public class DynamicTaskManager {
                     }
                     if (null != scheduledFuture) {
                         SCHEDULE_FUTURES.put(scheduleKey, scheduledFuture);
-                        LOGGER.debug("Building new schedule task, target bean " + targetBean + " target method " + targetMethod + ".");
+                        log.debug("Building new schedule task, target bean " + targetBean + " target method " + targetMethod + ".");
                     }
                 } else {
                     ConsoleManager.getSchedulerTaskManager().getScheduleTask()
                             .saveRunningInfo(scheduleKey, ConsoleManager.getSchedulerTaskManager().getScheduleServerUUid(), "bean not exists");
-                    LOGGER.debug("Bean name is not exists.");
+                    log.debug("Bean name is not exists.");
                 }
             }
         } catch (Exception e) {
-            LOGGER.error(e.getMessage(), e);
+            log.error(e.getMessage(), e);
         }
     }
 
@@ -144,9 +144,9 @@ public class DynamicTaskManager {
             try {
                 ConsoleManager.getSchedulerTaskManager().getScheduleTask().saveRunningInfo(name, ConsoleManager.getSchedulerTaskManager().getScheduleServerUUid(), "method is null");
             } catch (Exception e1) {
-                LOGGER.debug(e.getLocalizedMessage(), e);
+                log.debug(e.getLocalizedMessage(), e);
             }
-            LOGGER.debug(e.getLocalizedMessage(), e);
+            log.debug(e.getLocalizedMessage(), e);
         }
         return scheduledMethodRunnable;
     }

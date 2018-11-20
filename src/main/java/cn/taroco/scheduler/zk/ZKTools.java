@@ -1,4 +1,4 @@
-package cn.uncode.schedule.zk;
+package cn.taroco.scheduler.zk;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.zookeeper.CreateMode;
@@ -13,7 +13,7 @@ import java.util.List;
 
 /**
  * zk工具类
- * 
+ *
  * @author juny.ye
  *
  */
@@ -42,14 +42,14 @@ public class ZKTools {
 			   writer.write(name+"[v."+ stat.getVersion() +"]"+"["+ new String(value) +"]"  + lineSplitChar);
 		   }
 	   }
-   }  
+   }
    public static void deleteTree(ZooKeeper zk,String path) throws Exception{
 	   String[] list = getTree(zk,path);
 	   for(int i= list.length -1;i>=0; i--){
 		   zk.delete(list[i],-1);
 	   }
    }
-   
+
    private static String[] getTree(ZooKeeper zk, String path) throws Exception{
 	   if(zk.exists(path, false) == null){
 		   return new String[0];
