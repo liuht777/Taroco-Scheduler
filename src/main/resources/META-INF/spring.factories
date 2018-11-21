@@ -1,2 +1,2 @@
 org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
-cn.uncode.schedule.config.UncodeScheduleAutoConfiguration
+io.github.liuht777.scheduler.config.TarocoSchedulerAutoConfiguration

@@ -164,7 +164,7 @@ public class UncodeScheduleApplication {
 
 ```
 <!-- 分布式任务管理器 -->
-<bean id="schedulerTaskManager" class="cn.uncode.schedule.SchedulerTaskManager" init-method="init">
+<bean id="schedulerTaskManager" class="SchedulerTaskManager" init-method="init">
     <property name="config">
         <map>
             <entry key="uncode.schedule.zkConnect" value="127.0.0.1:2181" />
@@ -178,7 +178,7 @@ public class UncodeScheduleApplication {
     </property>
 </bean>
 
-<bean id="task1" class="cn.uncode.schedule.test.task.TestTask" />
+<bean id="task1" class="TestTask" />
 
 <task:scheduled-tasks scheduler="schedulerTaskManager">
     <task:scheduled ref="task1" method="task1" fixed-delay="5000"/>
