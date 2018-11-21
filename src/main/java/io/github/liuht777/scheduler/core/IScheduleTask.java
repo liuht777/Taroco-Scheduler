@@ -22,56 +22,56 @@ public interface IScheduleTask {
     /**
      * 添加指定任务
      *
-     * @param taskDefine 任务详情
+     * @param task 任务详情
      *                   targetBean 不能为空
      *                   targetMethod 不能为空
      */
-    void addTask(TaskDefine taskDefine);
+    void addTask(Task task);
 
     /**
      * 更新指定任务
      *
-     * @param taskDefine 任务详情
+     * @param task 任务详情
      *                   targetBean 不能为空
      *                   targetMethod 不能为空
      */
-    void updateTask(TaskDefine taskDefine);
+    void updateTask(Task task);
 
     /**
      * 删除指定任务
      *
-     * @param taskDefine 任务详情
+     * @param task 任务详情
      *                   targetBean 不能为空
      *                   targetMethod 不能为空
      */
-    void delTask(TaskDefine taskDefine);
+    void delTask(Task task);
 
     /**
      * 返回所有任务
      *
-     * @return List<TaskDefine>
+     * @return List<Task>
      */
-    List<TaskDefine> selectTask();
+    List<Task> selectTask();
 
     /**
      * 判断指定任务是否存在
      *
-     * @param taskDefine 任务详情
+     * @param task 任务详情
      *                   targetBean 不能为空
      *                   targetMethod 不能为空
      * @return 是否存在
      */
-    boolean isExistsTask(TaskDefine taskDefine);
+    boolean isExistsTask(Task task);
 
     /**
      * 返回指定任务详情
      *
-     * @param taskDefine 任务数据
+     * @param task 任务数据
      *                   targetBean 不能为空
      *                   targetMethod 不能为空
      * @return 任务详情
      */
-    TaskDefine selectTask(TaskDefine taskDefine);
+    Task selectTask(Task task);
 
     /**
      * 保存任务执行信息

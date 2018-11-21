@@ -1,20 +1,23 @@
 package io.github.liuht777.scheduler.zk;
 
 import io.github.liuht777.scheduler.DynamicTaskManager;
+import io.github.liuht777.scheduler.constant.DefaultConstants;
 import io.github.liuht777.scheduler.core.ISchedulerServer;
 import io.github.liuht777.scheduler.core.ScheduleServer;
-import io.github.liuht777.scheduler.core.TaskDefine;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import io.github.liuht777.scheduler.core.Task;
+import io.github.liuht777.scheduler.util.JsonUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.zookeeper.CreateMode;
-import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.data.Stat;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.util.CollectionUtils;
 
 import java.sql.Timestamp;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -23,35 +26,36 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @author liuht
  * @date 2017/10/21 14:27
  */
+@Slf4j
 public class SchedulerServerForZookeeper implements ISchedulerServer {
 
-    private static final transient Logger LOG = LoggerFactory.getLogger(SchedulerServerForZookeeper.class);
-    private Gson gson = new GsonBuilder().create();
     private AtomicInteger pos = new AtomicInteger(0);
-
     private String pathServer;
     private String pathTask;
-    private ZKManager zkManager;
+    private ZkClient zkClient;
     private long zkBaseTime = 0;
     private long loclaBaseTime = 0;
 
-    public SchedulerServerForZookeeper(ZKManager zkManager, String pathServer, String pathTask) {
-        this.zkManager = zkManager;
+    public SchedulerServerForZookeeper(ZkClient zkClient, String pathServer, String pathTask) {
+        this.zkClient = zkClient;
         this.pathTask = pathTask;
         this.pathServer = pathServer;
         try {
             long timeApart = 5000;
             // zookeeper时间与服务端时间差距判断
-            String tempPath = this.zkManager.getZooKeeper().create(this.zkManager.getRootPath() + "/systime", null, this.zkManager.getAcl(), CreateMode.EPHEMERAL_SEQUENTIAL);
-            Stat tempStat = this.zkManager.getZooKeeper().exists(tempPath, false);
+            final String rootPath = this.zkClient.getSchedulerProperties().getZk().getRootPath();
+            final String tempPath = this.zkClient.getClient().create()
+                    .withMode(CreateMode.EPHEMERAL_SEQUENTIAL)
+                    .forPath(rootPath + "/systime");
+            final Stat tempStat = this.zkClient.getClient().checkExists().forPath(tempPath);
             zkBaseTime = tempStat.getCtime();
-            ZKTools.deleteTree(this.zkManager.getZooKeeper(), tempPath);
+            this.zkClient.getClient().delete().deletingChildrenIfNeeded().forPath(tempPath);
             loclaBaseTime = System.currentTimeMillis();
             if (Math.abs(this.zkBaseTime - this.loclaBaseTime) > timeApart) {
-                LOG.error("请注意，Zookeeper服务器时间与本地时间相差 ： " + Math.abs(this.zkBaseTime - this.loclaBaseTime) + " ms");
+                log.warn("请注意，Zookeeper服务器时间与本地时间相差 ： " + Math.abs(this.zkBaseTime - this.loclaBaseTime) + " ms");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("zookeeper时间与本地时间校验失败.", e);
         }
     }
 
@@ -59,57 +63,26 @@ public class SchedulerServerForZookeeper implements ISchedulerServer {
     public void registerScheduleServer(ScheduleServer server) {
         try {
             if (server.isRegister()) {
-                LOG.error(server.getUuid() + " 被重复注册");
+                log.warn(server.getUuid() + " 被重复注册");
                 return;
             }
             String realPath;
             //此处必须增加UUID作为唯一性保障
-            String id = server.getIp() + "$" + UUID.randomUUID().toString().replaceAll("-", "").toUpperCase();
-            String zkServerPath = pathServer + "/" + id + "$";
-            // 永久节点
-            realPath = this.zkManager.getZooKeeper().create(zkServerPath, null, this.zkManager.getAcl(), CreateMode.EPHEMERAL_SEQUENTIAL);
+            final String id = server.getIp() + "$" + UUID.randomUUID().toString().replaceAll("-", "").toUpperCase();
+            final String zkServerPath = pathServer + "/" + id + "$";
+            // 临时顺序节点
+            realPath = this.zkClient.getClient().create().withMode(CreateMode.EPHEMERAL_SEQUENTIAL)
+                    .forPath(zkServerPath);
             server.setUuid(realPath.substring(realPath.lastIndexOf("/") + 1));
 
             Timestamp heartBeatTime = new Timestamp(getSystemTime());
             server.setHeartBeatTime(heartBeatTime);
 
-            String valueString = this.gson.toJson(server);
-            this.zkManager.getZooKeeper().setData(realPath, valueString.getBytes(), -1);
+            String valueString = JsonUtil.object2Json(server);
+            this.zkClient.getClient().setData().forPath(realPath, valueString.getBytes());
             server.setRegister(true);
         } catch (Exception e) {
-            LOG.error("registerScheduleServer failed:", e);
-        }
-    }
-
-    @Override
-    public void unRegisterScheduleServer(ScheduleServer server) {
-        List<String> serverList = this.loadScheduleServerNames();
-        try {
-            if (server.isRegister() && this.isLeader(server.getUuid(), serverList)) {
-                //delete task
-                String zkPath = this.pathTask;
-                String serverPath = this.pathServer;
-                if (this.zkManager.getZooKeeper().exists(zkPath, false) == null) {
-                    this.zkManager.getZooKeeper().create(zkPath, null, this.zkManager.getAcl(), CreateMode.PERSISTENT);
-                }
-                //get all task
-                List<String> children = this.zkManager.getZooKeeper().getChildren(zkPath, false);
-                if (null != children && children.size() > 0) {
-                    for (String taskName : children) {
-                        String taskPath = zkPath + "/" + taskName;
-                        if (this.zkManager.getZooKeeper().exists(taskPath, false) != null) {
-                            ZKTools.deleteTree(this.zkManager.getZooKeeper(), taskPath + "/" + server.getUuid());
-                        }
-                    }
-                }
-                //删除
-                if (this.zkManager.getZooKeeper().exists(this.pathServer, false) == null) {
-                    ZKTools.deleteTree(this.zkManager.getZooKeeper(), serverPath + serverPath + "/" + server.getUuid());
-                }
-                server.setRegister(false);
-            }
-        } catch (Exception e) {
-            LOG.error("unRegisterScheduleServer failed", e);
+            log.error("registerScheduleServer failed:", e);
         }
     }
 
@@ -118,74 +91,77 @@ public class SchedulerServerForZookeeper implements ISchedulerServer {
         List<String> serverList = new ArrayList<>(1);
         try {
             String zkPath = this.pathServer;
-            if (this.zkManager.getZooKeeper().exists(zkPath, false) == null) {
-                return new ArrayList<>();
+            if (this.zkClient.getClient().checkExists().forPath(zkPath) == null) {
+                return Collections.emptyList();
             }
-            serverList = this.zkManager.getZooKeeper().getChildren(zkPath, false);
+            serverList = this.zkClient.getClient().getChildren().forPath(zkPath);
             serverList.sort(Comparator.comparing(u -> u.substring(u.lastIndexOf("$") + 1)));
         } catch (Exception e) {
-            LOG.error("loadScheduleServerNames failed", e);
+            log.error("loadScheduleServerNames failed", e);
         }
         return serverList;
     }
 
     @Override
     public void assignTask(String currentUuid, List<String> taskServerList, String taskTrigger) {
-        LOG.info("当前server:["+ currentUuid + "]:开始重新分配任务......");
+        log.info("当前server:[" + currentUuid + "]: 开始重新分配任务......");
         if (!this.isLeader(currentUuid, taskServerList)) {
-            LOG.info("当前server:["+ currentUuid + "]:不是负责任务分配的Leader,直接返回");
+            log.info("当前server:[" + currentUuid + "]: 不是负责任务分配的Leader,直接返回");
             return;
         }
-        if (taskServerList.size() <= 0) {
+        if (CollectionUtils.isEmpty(taskServerList)) {
             //在服务器动态调整的时候，可能出现服务器列表为空的清空
-            LOG.info("服务器列表为空: 停止分配任务, 等待服务器上线...");
+            log.info("服务器列表为空: 停止分配任务, 等待服务器上线...");
             return;
         }
         try {
-            if (this.zkManager.checkZookeeperState()) {
-                String zkPath = this.pathTask;
-                if (this.zkManager.getZooKeeper().exists(zkPath, false) == null) {
-                    this.zkManager.getZooKeeper().create(zkPath, null, this.zkManager.getAcl(), CreateMode.PERSISTENT);
-                }
-                List<String> children = this.zkManager.getZooKeeper().getChildren(zkPath, false);
-                if (null != children && children.size() > 0) {
-                    for (String taskName : children) {
-                        String taskPath = zkPath + "/" + taskName;
-                        if (this.zkManager.getZooKeeper().exists(taskPath, false) == null) {
-                            this.zkManager.getZooKeeper().create(taskPath, null, this.zkManager.getAcl(), CreateMode.PERSISTENT);
-                        }
+            String zkPath = this.pathTask;
+            if (this.zkClient.getClient().checkExists().forPath(zkPath) == null) {
+                this.zkClient.getClient().create()
+                        .withMode(CreateMode.PERSISTENT).forPath(zkPath);
+            }
+            List<String> children = this.zkClient.getClient().getChildren().forPath(zkPath);
+            if (null != children && children.size() > 0) {
+                for (String taskName : children) {
+                    String taskPath = zkPath + "/" + taskName;
+                    if (this.zkClient.getClient().checkExists().forPath(taskPath) == null) {
+                        this.zkClient.getClient().create()
+                                .withMode(CreateMode.PERSISTENT).forPath(taskPath);
+                    }
 
-                        List<String> taskServerIds = this.zkManager.getZooKeeper().getChildren(taskPath, false);
-                        if (null == taskServerIds || taskServerIds.size() == 0) {
-                            assignServer2Task(taskServerList, taskPath, taskTrigger, taskName);
-                        } else {
-                            boolean hasAssignSuccess = false;
-                            for (String serverId : taskServerIds) {
-                                if (taskServerList.contains(serverId)) {
-                                    //防止重复分配任务，如果已经成功分配，第二个以后都删除
-                                    if (hasAssignSuccess) {
-                                        ZKTools.deleteTree(this.zkManager.getZooKeeper(), taskPath + "/" + serverId);
-                                    } else {
-                                        hasAssignSuccess = true;
-                                        continue;
-                                    }
+                    List<String> taskServerIds = this.zkClient.getClient().getChildren().forPath(taskPath);
+                    if (CollectionUtils.isEmpty(taskServerIds)) {
+                        // 没有找到目标server信息, 执行分配任务给server节点
+                        assignServer2Task(taskServerList, taskPath, taskTrigger, taskName);
+                    } else {
+                        boolean hasAssignSuccess = false;
+                        for (String serverId : taskServerIds) {
+                            if (taskServerList.contains(serverId)) {
+                                //防止重复分配任务，如果已经成功分配，第二个以后都删除
+                                if (hasAssignSuccess) {
+                                    this.zkClient.getClient().delete().deletingChildrenIfNeeded()
+                                            .forPath(taskPath + "/" + serverId);
+                                } else {
+                                    hasAssignSuccess = true;
+                                    continue;
                                 }
-                                ZKTools.deleteTree(this.zkManager.getZooKeeper(), taskPath + "/" + serverId);
                             }
-                            if (!hasAssignSuccess) {
-                                assignServer2Task(taskServerList, taskPath, taskTrigger, taskName);
-                            }
+                            this.zkClient.getClient().delete().deletingChildrenIfNeeded()
+                                    .forPath(taskPath + "/" + serverId);
                         }
+                        if (!hasAssignSuccess) {
+                            assignServer2Task(taskServerList, taskPath, taskTrigger, taskName);
+                        }
+                    }
 
-                    }
-                } else {
-                    if (LOG.isDebugEnabled()) {
-                        LOG.debug(currentUuid + ":没有集群任务");
-                    }
+                }
+            } else {
+                if (log.isDebugEnabled()) {
+                    log.debug(currentUuid + ":没有集群任务");
                 }
             }
         } catch (Exception e) {
-            LOG.error("assignTask failed:", e);
+            log.error("assignTask failed:", e);
         }
     }
 
@@ -194,9 +170,9 @@ public class SchedulerServerForZookeeper implements ISchedulerServer {
      * 解决多server情况下,非leader节点不能动态检查本地任务
      *
      * @param taskServerList 待分配server列表
-     * @param taskPath 任务path
-     * @param taskTrigger 任务trigger
-     * @param taskName 任务名称
+     * @param taskPath       任务path
+     * @param taskTrigger    任务trigger
+     * @param taskName       任务名称
      * @throws Exception 异常信息
      */
     private void assignServer2Task(List<String> taskServerList, String taskPath, String taskTrigger, String taskName) throws Exception {
@@ -206,73 +182,73 @@ public class SchedulerServerForZookeeper implements ISchedulerServer {
         String serverId = taskServerList.get(pos.intValue());
         pos.incrementAndGet();
         try {
-            if (this.zkManager.getZooKeeper().exists(taskPath, false) != null) {
-                this.zkManager.getZooKeeper().create(taskPath + "/" + serverId, null, this.zkManager.getAcl(), CreateMode.PERSISTENT);
+            if (this.zkClient.getClient().checkExists().forPath(taskPath) != null) {
+                this.zkClient.getClient().create().withMode(CreateMode.PERSISTENT).forPath(taskPath + "/" + serverId);
                 triggerTaskModified(taskTrigger, taskName);
-                LOG.info("成功分配任务 [" + taskPath + "]" + " 给 server [" + serverId + "]");
+                log.info("成功分配任务 [" + taskPath + "]" + " 给 server [" + serverId + "]");
             }
         } catch (Exception e) {
-            LOG.error("assign task error", e);
+            log.error("assign task error", e);
         }
     }
 
     @Override
     public void triggerTaskModified(String taskTrigger, String taskName) throws Exception {
-        if (this.zkManager.getZooKeeper().exists(taskTrigger, false) != null) {
-            List<String> children = this.zkManager.getZooKeeper().getChildren(taskTrigger, false);
-            if (!CollectionUtils.isEmpty(children) && children.size() > 20) {
-                ZKTools.deleteTree(this.zkManager.getZooKeeper(), taskTrigger);
+        if (this.zkClient.getClient().checkExists().forPath(taskTrigger) != null) {
+            List<String> children = this.zkClient.getClient().getChildren().forPath(taskTrigger);
+            if (!CollectionUtils.isEmpty(children) && children.size() > 100) {
+                // 未防止taskTrigger下内容过多, 当超过100条时, 清空taskTrigger
+                this.zkClient.getClient().delete().deletingChildrenIfNeeded()
+                        .forPath(taskTrigger);
             }
-
-            this.zkManager.getZooKeeper().create(taskTrigger + "/" + taskName, null, this.zkManager.getAcl(), CreateMode.PERSISTENT_SEQUENTIAL);
+            this.zkClient.getClient().create().withMode(CreateMode.PERSISTENT_SEQUENTIAL)
+                    .forPath(taskTrigger + "/" + taskName);
         }
     }
 
     @Override
     public void checkLocalTask(String currentUuid) {
         try {
-            if (this.zkManager.checkZookeeperState()) {
-                String zkPath = this.pathTask;
-                List<String> children = this.zkManager.getZooKeeper().getChildren(zkPath, false);
-                List<String> ownerTask = new ArrayList<String>();
-                if (null != children && children.size() > 0) {
-                    for (String taskName : children) {
-                        if (isOwner(taskName, currentUuid)) {
-                            String taskPath = zkPath + "/" + taskName;
-                            byte[] data = this.zkManager.getZooKeeper().getData(taskPath, null, null);
-                            if (null != data) {
-                                String json = new String(data);
-                                TaskDefine td = this.gson.fromJson(json, TaskDefine.class);
-                                TaskDefine taskDefine = new TaskDefine();
-                                taskDefine.valueOf(td);
-                                ownerTask.add(taskName);
-                                if (TaskDefine.TYPE_UNCODE_TASK.equals(taskDefine.getType())) {
-                                    // 动态任务才使用 DynamicTaskManager启动
-                                    DynamicTaskManager.scheduleTask(taskDefine, new Date(getSystemTime()));
-                                }
+            String zkPath = this.pathTask;
+            List<String> children = this.zkClient.getClient().getChildren().forPath(zkPath);
+            List<String> ownerTask = new ArrayList<>();
+            if (null != children && children.size() > 0) {
+                for (String taskName : children) {
+                    if (isOwner(taskName, currentUuid)) {
+                        String taskPath = zkPath + "/" + taskName;
+                        byte[] data =this.zkClient.getClient().getData().forPath(taskPath);
+                        if (null != data) {
+                            String json = new String(data);
+                            Task td = JsonUtil.json2Object(json, Task.class);
+                            Task task = new Task();
+                            task.valueOf(td);
+                            ownerTask.add(taskName);
+                            if (DefaultConstants.TYPE_TAROCO_TASK.equals(task.getType())) {
+                                // 动态任务才使用 DynamicTaskManager启动
+                                DynamicTaskManager.scheduleTask(task, new Date(getSystemTime()));
                             }
                         }
                     }
                 }
-                DynamicTaskManager.clearLocalTask(ownerTask);
             }
+            DynamicTaskManager.clearLocalTask(ownerTask);
         } catch (Exception e) {
-            LOG.error("checkLocalTask failed", e);
+            log.error("checkLocalTask failed", e);
         }
     }
 
     @Override
-    public boolean isOwner(String name, String uuid) {
+    public boolean isOwner(String taskName, String serverUuid) {
         boolean isOwner = false;
         //查看集群中是否注册当前任务，如果没有就自动注册
-        String zkPath = this.pathTask + "/" + name;
+        String zkPath = this.pathTask + "/" + taskName;
         //判断是否分配给当前节点
         try {
-            if (this.zkManager.getZooKeeper().exists(zkPath + "/" + uuid, false) != null) {
+            if (this.zkClient.getClient().checkExists().forPath(zkPath + "/" + serverUuid) != null) {
                 isOwner = true;
             }
-        } catch (KeeperException | InterruptedException e) {
-            LOG.error("ZK error", e);
+        } catch (Exception e) {
+            log.error("isOwner assert error", e);
         }
         return isOwner;
     }

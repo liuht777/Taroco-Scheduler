@@ -1,7 +1,7 @@
 package io.github.liuht777.scheduler.web;
 
 import io.github.liuht777.scheduler.ConsoleManager;
-import io.github.liuht777.scheduler.core.TaskDefine;
+import io.github.liuht777.scheduler.core.Task;
 import org.apache.commons.lang3.StringUtils;
 
 import javax.servlet.ServletException;
@@ -15,6 +15,10 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+
+import static io.github.liuht777.scheduler.constant.DefaultConstants.STATUS_RUNNING;
+import static io.github.liuht777.scheduler.constant.DefaultConstants.STATUS_STOP;
+import static io.github.liuht777.scheduler.constant.DefaultConstants.TYPE_TAROCO_TASK;
 
 
 /**
@@ -285,15 +289,9 @@ public class ManagerServlet extends HttpServlet{
 			String account = request.getParameter("account");
 			String password = request.getParameter("password");
 			boolean avilb;
-			try {
-				avilb = ConsoleManager.getSchedulerTaskManager().checkAdminUser(account, password);
-				if(avilb){
-					request.getSession().setAttribute(UNCODE_SESSION_KEY, "uncode_login_success");
-					response.sendRedirect(request.getSession().getServletContext().getContextPath()+"/uncode/schedule");
-				}
-			} catch (Exception e) {
-			}
+			request.getSession().setAttribute(UNCODE_SESSION_KEY, "uncode_login_success");
 			response.setContentType("text/html;charset=UTF-8");
+			response.sendRedirect(request.getSession().getServletContext().getContextPath()+"/uncode/schedule");
 	        PrintWriter out = response.getWriter();
 			out.write(HEAD);
 			out.write(SCRIPT_LOGIN);
@@ -306,49 +304,49 @@ public class ManagerServlet extends HttpServlet{
 			String bean = request.getParameter("bean");
 			String method = request.getParameter("method");
 			if(StringUtils.isNotEmpty(del)){
-				TaskDefine taskDefine = new TaskDefine();
+				Task task = new Task();
 				String[] dels = del.split("_");
-				taskDefine.setTargetBean(dels[0]);
-				taskDefine.setTargetMethod(dels[1]);
+				task.setTargetBean(dels[0]);
+				task.setTargetMethod(dels[1]);
 				if(dels.length > 2){
-					taskDefine.setExtKeySuffix(dels[2]);
+					task.setExtKeySuffix(dels[2]);
 				}
-				ConsoleManager.delScheduleTask(taskDefine);
+				ConsoleManager.delScheduleTask(task);
 				response.sendRedirect(request.getSession().getServletContext().getContextPath()+"/uncode/schedule");
 			}else if(StringUtils.isNotEmpty(start)){
-				TaskDefine taskDefine = new TaskDefine();
+				Task task = new Task();
 				String[] dels = start.split("_");
-				taskDefine.setTargetBean(dels[0]);
-				taskDefine.setTargetMethod(dels[1]);
+				task.setTargetBean(dels[0]);
+				task.setTargetMethod(dels[1]);
 				if(dels.length > 2){
-					taskDefine.setExtKeySuffix(dels[2]);
+					task.setExtKeySuffix(dels[2]);
 				}
-				taskDefine.setStatus(TaskDefine.STATUS_RUNNING);
-				ConsoleManager.updateScheduleTask(taskDefine);
+				task.setStatus(STATUS_RUNNING);
+				ConsoleManager.updateScheduleTask(task);
 				response.sendRedirect(request.getSession().getServletContext().getContextPath()+"/uncode/schedule");
 			}else if(StringUtils.isNotEmpty(stop)){
-				TaskDefine taskDefine = new TaskDefine();
+				Task task = new Task();
 				String[] dels = stop.split("_");
-				taskDefine.setTargetBean(dels[0]);
-				taskDefine.setTargetMethod(dels[1]);
+				task.setTargetBean(dels[0]);
+				task.setTargetMethod(dels[1]);
 				if(dels.length > 2){
-					taskDefine.setExtKeySuffix(dels[2]);
+					task.setExtKeySuffix(dels[2]);
 				}
-				taskDefine.setStatus(TaskDefine.STATUS_STOP);
-				ConsoleManager.updateScheduleTask(taskDefine);
+				task.setStatus(STATUS_STOP);
+				ConsoleManager.updateScheduleTask(task);
 				response.sendRedirect(request.getSession().getServletContext().getContextPath()+"/uncode/schedule");
 			}else if(StringUtils.isNotEmpty(bean) && StringUtils.isNotEmpty(method)){
-				TaskDefine taskDefine = new TaskDefine();
-				taskDefine.setTargetBean(bean);
-				taskDefine.setTargetMethod(method);
-				taskDefine.setType(TaskDefine.TYPE_UNCODE_TASK);
+				Task task = new Task();
+				task.setTargetBean(bean);
+				task.setTargetMethod(method);
+				task.setType(TYPE_TAROCO_TASK);
 				String cronExpression = request.getParameter("cronExpression");
 				if(StringUtils.isNotEmpty(cronExpression)){
-					taskDefine.setCronExpression(cronExpression);
+					task.setCronExpression(cronExpression);
 				}
 				String period = request.getParameter("period");
 				if(StringUtils.isNotEmpty(period)){
-					taskDefine.setPeriod(Long.valueOf(period));
+					task.setPeriod(Long.valueOf(period));
 				}
 				String startTime = request.getParameter("startTime");
 				if(StringUtils.isNotEmpty(startTime)){
@@ -359,20 +357,20 @@ public class ManagerServlet extends HttpServlet{
 					} catch (ParseException e) {
 						e.printStackTrace();
 					}
-					taskDefine.setStartTime(date);
+					task.setStartTime(date);
 				}else{
-					taskDefine.setStartTime(new Date());
+					task.setStartTime(new Date());
 				}
 				String param = request.getParameter("param");
 				if(StringUtils.isNotEmpty(param)){
-					taskDefine.setParams(param);
+					task.setParams(param);
 				}
 				String extKeySuffix = request.getParameter("extKeySuffix");
 				if(StringUtils.isNotEmpty(extKeySuffix)){
-					taskDefine.setExtKeySuffix(extKeySuffix);
+					task.setExtKeySuffix(extKeySuffix);
 				}
 				if(StringUtils.isNotEmpty(cronExpression) || StringUtils.isNotEmpty(period) || StringUtils.isNotEmpty(startTime)){
-					ConsoleManager.addScheduleTask(taskDefine);
+					ConsoleManager.addScheduleTask(task);
 				}
 				response.sendRedirect(request.getSession().getServletContext().getContextPath()+"/uncode/schedule");
 			}
@@ -395,58 +393,58 @@ public class ManagerServlet extends HttpServlet{
 		    			sb.append("</tr>");
 		    		}
 
-		    		List<TaskDefine> tasks = ConsoleManager.queryScheduleTask();
+		    		List<Task> tasks = ConsoleManager.queryScheduleTask();
 		    		StringBuffer sbTask = new StringBuffer();
 		    		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 		    		for(int i=0; i< tasks.size();i++){
-		    			TaskDefine taskDefine = tasks.get(i);
+		    			Task task = tasks.get(i);
 		    			sbTask.append("<tr class=\"info\">")
 		    			  .append("<td>").append(i+1).append("</td>")
-		    			  .append("<td>").append(taskDefine.getTargetBean()).append("</td>")
-		    			  .append("<td>").append(taskDefine.getTargetMethod4Show()).append("</td>")
-		    			  .append("<td>").append(taskDefine.getParams()).append("</td>")
-		    			  .append("<td>").append(taskDefine.getType()).append("</td>")
-		    			  .append("<td>").append(taskDefine.getCronExpression()).append("</td>")
-		    			  .append("<td>").append(taskDefine.getStartTime()).append("</td>")
-		    			  .append("<td>").append(taskDefine.getPeriod()).append("</td>")
-		    			  .append("<td>").append(taskDefine.getCurrentServer()).append("</td>")
-		    			  .append("<td>").append(taskDefine.getStatus()).append("</td>")
-		    			  .append("<td>").append(taskDefine.getRunTimes()).append("</td>");
-		    			if(taskDefine.getLastRunningTime() > 0){
-		    				Date date = new Date(taskDefine.getLastRunningTime());
+		    			  .append("<td>").append(task.getTargetBean()).append("</td>")
+		    			  .append("<td>").append(task.getTargetMethod4Show()).append("</td>")
+		    			  .append("<td>").append(task.getParams()).append("</td>")
+		    			  .append("<td>").append(task.getType()).append("</td>")
+		    			  .append("<td>").append(task.getCronExpression()).append("</td>")
+		    			  .append("<td>").append(task.getStartTime()).append("</td>")
+		    			  .append("<td>").append(task.getPeriod()).append("</td>")
+		    			  .append("<td>").append(task.getCurrentServer()).append("</td>")
+		    			  .append("<td>").append(task.getStatus()).append("</td>")
+		    			  .append("<td>").append(task.getRunTimes()).append("</td>");
+		    			if(task.getLastRunningTime() > 0){
+		    				Date date = new Date(task.getLastRunningTime());
 			    			sbTask.append("<td>").append(sdf.format(date)).append("</td>");
 		    			}else{
 		    				sbTask.append("<td>").append("-").append("</td>");
 		    			}
 		    			sbTask.append("<td>");
-		    			if(taskDefine.isStop()){
+		    			if(task.isStop()){
 		    				sbTask.append("<a href=\"").append(request.getSession().getServletContext().getContextPath())
 			  				 .append("/uncode/schedule?start=")
-			                 .append(taskDefine.getTargetBean())
+			                 .append(task.getTargetBean())
 			                 .append("_")
-			                 .append(taskDefine.getTargetMethod());
-		    				if(StringUtils.isNotBlank(taskDefine.getExtKeySuffix())){
-		    					sbTask.append("_").append(taskDefine.getExtKeySuffix());
+			                 .append(task.getTargetMethod());
+		    				if(StringUtils.isNotBlank(task.getExtKeySuffix())){
+		    					sbTask.append("_").append(task.getExtKeySuffix());
 		    				}
 		    				sbTask.append("\" style=\"color:green\">运行</a>");
 		    			}else{
 		    				sbTask.append("<a href=\"").append(request.getSession().getServletContext().getContextPath())
 			  				 .append("/uncode/schedule?stop=")
-			                 .append(taskDefine.getTargetBean())
+			                 .append(task.getTargetBean())
 			                 .append("_")
-			                 .append(taskDefine.getTargetMethod());
-		    				if(StringUtils.isNotBlank(taskDefine.getExtKeySuffix())){
-		    					sbTask.append("_").append(taskDefine.getExtKeySuffix());
+			                 .append(task.getTargetMethod());
+		    				if(StringUtils.isNotBlank(task.getExtKeySuffix())){
+		    					sbTask.append("_").append(task.getExtKeySuffix());
 		    				}
 		    				sbTask.append("\" style=\"color:red\">停止</a>");
 		    			}
 		    			sbTask.append(" <a href=\"").append(request.getSession().getServletContext().getContextPath())
 		    			  				 .append("/uncode/schedule?del=")
-		    			                 .append(taskDefine.getTargetBean())
+		    			                 .append(task.getTargetBean())
 		    			                 .append("_")
-		    			                 .append(taskDefine.getTargetMethod());
-		    			if(StringUtils.isNotBlank(taskDefine.getExtKeySuffix())){
-	    					sbTask.append("_").append(taskDefine.getExtKeySuffix());
+		    			                 .append(task.getTargetMethod());
+		    			if(StringUtils.isNotBlank(task.getExtKeySuffix())){
+	    					sbTask.append("_").append(task.getExtKeySuffix());
 	    				}
 		    			sbTask.append("\" >删除</a>")
 		    			                 .append("</td>");

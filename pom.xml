@@ -59,8 +59,9 @@
         </dependency>
         <!-- zookeeper依赖 -->
         <dependency>
-            <groupId>org.springframework.integration</groupId>
-            <artifactId>spring-integration-zookeeper</artifactId>
+            <groupId>org.apache.curator</groupId>
+            <artifactId>curator-recipes</artifactId>
+            <version>2.11.1</version>
         </dependency>
         <!-- spring-boot-configuration-processor -->
         <dependency>

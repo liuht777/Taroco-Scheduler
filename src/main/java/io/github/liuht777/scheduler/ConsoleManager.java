@@ -1,13 +1,13 @@
 package io.github.liuht777.scheduler;
 
-import io.github.liuht777.scheduler.core.TaskDefine;
+import io.github.liuht777.scheduler.config.TarocoSchedulerProperties;
+import io.github.liuht777.scheduler.core.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.Assert;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
 
 
 /**
@@ -23,10 +23,10 @@ public class ConsoleManager {
 
     private static SchedulerTaskManager schedulerTaskManager;
 
-    static Properties properties = new Properties();
+    static TarocoSchedulerProperties schedulerProperties;
 
-    public static void setProperties(Properties prop){
-    	properties.putAll(prop);
+    public static void setProperties(TarocoSchedulerProperties schedulerProperties){
+    	schedulerProperties = schedulerProperties;
     }
 
     public static SchedulerTaskManager getSchedulerTaskManager(){
@@ -38,46 +38,46 @@ public class ConsoleManager {
         return ConsoleManager.schedulerTaskManager;
     }
 
-    public static void addScheduleTask(TaskDefine taskDefine) {
+    public static void addScheduleTask(Task task) {
         try {
-        	log.info("添加任务："+taskDefine.stringKey());
-            Assert.notNull(taskDefine.getTargetBean(), "targetBean can not be null.");
-            Assert.notNull(taskDefine.getTargetMethod(), "targetMethod can not be null.");
-			ConsoleManager.getSchedulerTaskManager().getScheduleTask().addTask(taskDefine);
+        	log.info("添加任务："+ task.stringKey());
+            Assert.notNull(task.getTargetBean(), "targetBean can not be null.");
+            Assert.notNull(task.getTargetMethod(), "targetMethod can not be null.");
+			ConsoleManager.getSchedulerTaskManager().getScheduleTask().addTask(task);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 		}
     }
 
-    public static void delScheduleTask(TaskDefine taskDefine) {
+    public static void delScheduleTask(Task task) {
         try {
-			log.info("删除任务："+taskDefine.stringKey());
-            Assert.notNull(taskDefine.getTargetBean(), "targetBean can not be null.");
-            Assert.notNull(taskDefine.getTargetMethod(), "targetMethod can not be null.");
-			ConsoleManager.getSchedulerTaskManager().getScheduleTask().delTask(taskDefine);
+			log.info("删除任务："+ task.stringKey());
+            Assert.notNull(task.getTargetBean(), "targetBean can not be null.");
+            Assert.notNull(task.getTargetMethod(), "targetMethod can not be null.");
+			ConsoleManager.getSchedulerTaskManager().getScheduleTask().delTask(task);
 			// 删除任务后出发本地任务检查
             ConsoleManager.getSchedulerTaskManager().getSchedulerServer().triggerTaskModified(
-                    ConsoleManager.getSchedulerTaskManager().getTaskTrigger(), taskDefine.stringKey());
+                    ConsoleManager.getSchedulerTaskManager().getTaskTrigger(), task.stringKey());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 		}
     }
 
-    public static void updateScheduleTask(TaskDefine taskDefine) {
+    public static void updateScheduleTask(Task task) {
         try {
-            log.info("更新任务："+taskDefine.stringKey());
-            Assert.notNull(taskDefine.getTargetBean(), "targetBean can not be null.");
-            Assert.notNull(taskDefine.getTargetMethod(), "targetMethod can not be null.");
-			ConsoleManager.getSchedulerTaskManager().getScheduleTask().updateTask(taskDefine);
+            log.info("更新任务："+ task.stringKey());
+            Assert.notNull(task.getTargetBean(), "targetBean can not be null.");
+            Assert.notNull(task.getTargetMethod(), "targetMethod can not be null.");
+			ConsoleManager.getSchedulerTaskManager().getScheduleTask().updateTask(task);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 		}
     }
 
-    public static List<TaskDefine> queryScheduleTask() {
-    	List<TaskDefine> taskDefines = new ArrayList<TaskDefine>();
+    public static List<Task> queryScheduleTask() {
+    	List<Task> taskDefines = new ArrayList<Task>();
         try {
-			List<TaskDefine> tasks = ConsoleManager.getSchedulerTaskManager().getScheduleTask().selectTask();
+			List<Task> tasks = ConsoleManager.getSchedulerTaskManager().getScheduleTask().selectTask();
 			taskDefines.addAll(tasks);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
@@ -85,29 +85,29 @@ public class ConsoleManager {
         return taskDefines;
     }
 
-    public static boolean isExistsTask(TaskDefine taskDefine){
-        Assert.notNull(taskDefine.getTargetBean(), "targetBean can not be null.");
-        Assert.notNull(taskDefine.getTargetMethod(), "targetMethod can not be null.");
-        return ConsoleManager.getSchedulerTaskManager().getScheduleTask().isExistsTask(taskDefine);
+    public static boolean isExistsTask(Task task){
+        Assert.notNull(task.getTargetBean(), "targetBean can not be null.");
+        Assert.notNull(task.getTargetMethod(), "targetMethod can not be null.");
+        return ConsoleManager.getSchedulerTaskManager().getScheduleTask().isExistsTask(task);
     }
 
-    public static TaskDefine queryScheduleTask(TaskDefine taskDefine) {
-        Assert.notNull(taskDefine.getTargetBean(), "targetBean can not be null.");
-        Assert.notNull(taskDefine.getTargetMethod(), "targetMethod can not be null.");
-		return ConsoleManager.getSchedulerTaskManager().getScheduleTask().selectTask(taskDefine);
+    public static Task queryScheduleTask(Task task) {
+        Assert.notNull(task.getTargetBean(), "targetBean can not be null.");
+        Assert.notNull(task.getTargetMethod(), "targetMethod can not be null.");
+		return ConsoleManager.getSchedulerTaskManager().getScheduleTask().selectTask(task);
     }
 
 
-    public static boolean isOwner(TaskDefine taskDefine){
-        Assert.notNull(taskDefine.getTargetBean(), "targetBean can not be null.");
-        Assert.notNull(taskDefine.getTargetMethod(), "targetMethod can not be null.");
-		return ConsoleManager.getSchedulerTaskManager().getSchedulerServer().isOwner(taskDefine.stringKey(),
-				ConsoleManager.getSchedulerTaskManager().getScheduleServerUUid());
+    public static boolean isOwner(Task task){
+        Assert.notNull(task.getTargetBean(), "targetBean can not be null.");
+        Assert.notNull(task.getTargetMethod(), "targetMethod can not be null.");
+		return ConsoleManager.getSchedulerTaskManager().getSchedulerServer().isOwner(task.stringKey(),
+				ConsoleManager.getSchedulerTaskManager().getCurrentScheduleServerUUid());
     }
 
-    public static boolean isRunning(TaskDefine taskDefine) {
-        Assert.notNull(taskDefine.getTargetBean(), "targetBean can not be null.");
-        Assert.notNull(taskDefine.getTargetMethod(), "targetMethod can not be null.");
-        return isExistsTask(taskDefine) && ConsoleManager.getSchedulerTaskManager().getScheduleTask().isRunning(taskDefine.stringKey());
+    public static boolean isRunning(Task task) {
+        Assert.notNull(task.getTargetBean(), "targetBean can not be null.");
+        Assert.notNull(task.getTargetMethod(), "targetMethod can not be null.");
+        return isExistsTask(task) && ConsoleManager.getSchedulerTaskManager().getScheduleTask().isRunning(task.stringKey());
     }
 }

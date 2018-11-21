@@ -11,9 +11,9 @@ import java.util.List;
 public interface ISchedulerServer {
 
     /**
-     * 判断指定任务 是否属于指定服务器
+     * 判断指定任务 是否属于指定server节点
      *
-     * @param taskName 任务唯一标识
+     * @param taskName   任务唯一标识
      * @param serverUuid 服务器唯一标识
      * @return 是否属于指定服务器
      */
@@ -29,9 +29,10 @@ public interface ISchedulerServer {
 
     /**
      * 分配任务
-     * @param currentUuid 当前服务器uuid
+     *
+     * @param currentUuid    当前服务器uuid
      * @param taskServerList 所有服务器uuid(过滤后的)
-     * @param taskTrigger 任务变更触发节点 用于在leader重新分配任务后,检查本地任务
+     * @param taskTrigger    任务变更触发节点 用于在leader重新分配任务后,检查本地任务
      */
     void assignTask(String currentUuid, List<String> taskServerList, String taskTrigger);
 
@@ -52,13 +53,6 @@ public interface ISchedulerServer {
     boolean isLeader(String serverUuid, List<String> serverList);
 
     /**
-     * 取消注册服务器
-     *
-     * @param server 服务器信息
-     */
-    void unRegisterScheduleServer(ScheduleServer server);
-
-    /**
      * 返回所有服务器名称
      *
      * @return 所有服务器名称
@@ -69,7 +63,7 @@ public interface ISchedulerServer {
      * 触发taskTrigger, taskTrigger下最多保留20个子节点,达到20个就删除之前的
      *
      * @param taskTrigger taskTrigger节点
-     * @param taskName 任务名称
+     * @param taskName    任务名称
      * @throws Exception 异常信息
      */
     void triggerTaskModified(String taskTrigger, String taskName) throws Exception;

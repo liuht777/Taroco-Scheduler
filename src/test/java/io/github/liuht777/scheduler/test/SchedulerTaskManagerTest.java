@@ -2,7 +2,7 @@ package io.github.liuht777.scheduler.test;
 
 import io.github.liuht777.scheduler.ConsoleManager;
 import io.github.liuht777.scheduler.SchedulerTaskManager;
-import io.github.liuht777.scheduler.core.TaskDefine;
+import io.github.liuht777.scheduler.core.Task;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -36,7 +36,7 @@ public class SchedulerTaskManagerTest {
     @Test
     public void testAdd() throws InterruptedException {
         // 定义任务实体
-        TaskDefine task = new TaskDefine();
+        Task task = new Task();
         task.setTargetBean("task");
         task.setTargetMethod("task2");
         task.setExtKeySuffix(null);

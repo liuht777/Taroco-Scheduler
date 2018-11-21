@@ -4,7 +4,6 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.net.InetAddress;
 import java.net.NetworkInterface;
-import java.net.ServerSocket;
 import java.net.SocketException;
 import java.util.Enumeration;
 
@@ -12,9 +11,10 @@ import java.util.Enumeration;
 /**
  * 调度处理工具类
  *
- * @author juny.ye
+ * @author liuht
  */
 public class ScheduleUtil {
+
     /**
      * 获取本地 host
      */
@@ -26,17 +26,11 @@ public class ScheduleUtil {
         }
     }
 
-    public static int getFreeSocketPort() {
-        try {
-            ServerSocket ss = new ServerSocket(0);
-            int freePort = ss.getLocalPort();
-            ss.close();
-            return freePort;
-        } catch (Exception ex) {
-            throw new RuntimeException(ex);
-        }
-    }
-
+    /**
+     * 获取本地ip
+     *
+     * @return
+     */
     public static String getLocalIP() {
         // 本地IP，如果没有配置外网IP则返回它
         String localip = null;
@@ -50,7 +44,7 @@ public class ScheduleUtil {
             e.printStackTrace();
             return null;
         }
-        InetAddress ip = null;
+        InetAddress ip;
         // 是否找到外网IP
         boolean finded = false;
         while (netInterfaces.hasMoreElements() && !finded) {
@@ -79,6 +73,14 @@ public class ScheduleUtil {
         }
     }
 
+    /**
+     * 构建任务key
+     *
+     * @param beanName     bean 名称
+     * @param methodName   方法名称
+     * @param extKeySuffix key后缀
+     * @return
+     */
     public static String buildScheduleKey(String beanName, String methodName, String extKeySuffix) {
         String result = beanName + "#" + methodName;
         if (StringUtils.isNotBlank(extKeySuffix)) {
@@ -88,6 +90,13 @@ public class ScheduleUtil {
     }
 
 
+    /**
+     * 构建任务key
+     *
+     * @param beanName   bean 名称
+     * @param methodName 方法名称
+     * @return
+     */
     public static String buildScheduleKey(String beanName, String methodName) {
         return buildScheduleKey(beanName, methodName, null);
     }

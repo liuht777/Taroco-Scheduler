@@ -1,38 +1,32 @@
 package io.github.liuht777.scheduler.zk;
 
+import io.github.liuht777.scheduler.constant.DefaultConstants;
 import io.github.liuht777.scheduler.core.IScheduleTask;
-import io.github.liuht777.scheduler.core.TaskDefine;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import io.github.liuht777.scheduler.core.Task;
+import io.github.liuht777.scheduler.util.JsonUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.curator.framework.CuratorFramework;
 import org.apache.zookeeper.CreateMode;
-import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.ZooKeeper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import static io.github.liuht777.scheduler.constant.DefaultConstants.STATUS_ERROR;
+
 /**
  * 定时任务操作实现类
  *
- * @author juny.ye
+ * @author liuht
  */
+@Slf4j
 public class ScheduleTaskForZookeeper implements IScheduleTask {
-    private static final transient Logger LOG = LoggerFactory.getLogger(ScheduleTaskForZookeeper.class);
-
-    private Gson gson = new GsonBuilder().create();
-    private ZKManager zkManager;
+    private CuratorFramework client;
     private String pathTask;
 
-    public ScheduleTaskForZookeeper(ZKManager zkManager, String pathTask) throws Exception {
-        this.zkManager = zkManager;
+    public ScheduleTaskForZookeeper(CuratorFramework client, String pathTask) {
+        this.client = client;
         this.pathTask = pathTask;
-    }
-
-    public ZooKeeper getZooKeeper() {
-        return this.zkManager.getZooKeeper();
     }
 
     @Override
@@ -42,20 +36,21 @@ public class ScheduleTaskForZookeeper implements IScheduleTask {
         String zkPath = this.pathTask + "/" + name;
         //是否手动停止
         try {
-            if (this.getZooKeeper().exists(zkPath, false) != null) {
-                byte[] data = this.getZooKeeper().getData(zkPath, null, null);
+            if (this.client.checkExists().forPath(zkPath) != null) {
+                byte[] data = this.client.getData().forPath(zkPath);
                 if (null != data) {
                     String json = new String(data);
-                    TaskDefine taskDefine = this.gson.fromJson(json, TaskDefine.class);
-                    if (taskDefine.isStop()) {
+                    Task task = JsonUtil.json2Object(json, Task.class);
+                    assert task != null;
+                    if (task.isStop()) {
                         isRunning = false;
                     }
                 }
             } else {
                 isRunning = false;
             }
-        } catch (KeeperException | InterruptedException e) {
-            LOG.error("zk error", e);
+        } catch (Exception e) {
+            log.error("zk error", e);
         }
         return isRunning;
     }
@@ -72,9 +67,9 @@ public class ScheduleTaskForZookeeper implements IScheduleTask {
         //判断是否分配给当前节点
         zkPath = zkPath + "/" + uuid;
         try {
-            if (this.getZooKeeper().exists(zkPath, false) != null) {
+            if (this.client.checkExists().forPath(zkPath) != null) {
                 int times = 0;
-                byte[] dataVal = this.getZooKeeper().getData(zkPath, null, null);
+                byte[] dataVal = this.client.getData().forPath(zkPath);
                 if (dataVal != null) {
                     String val = new String(dataVal);
                     String[] vals = val.split(":");
@@ -87,158 +82,160 @@ public class ScheduleTaskForZookeeper implements IScheduleTask {
                 } else {
                     newVal = times + ":" + System.currentTimeMillis();
                 }
-                this.getZooKeeper().setData(zkPath, newVal.getBytes(), -1);
+                this.client.setData().forPath(zkPath, newVal.getBytes());
             }
-        } catch (KeeperException | InterruptedException e) {
-            LOG.error("zk error", e);
+        } catch (Exception e) {
+            log.error("zk error", e);
         }
         return true;
     }
 
     @Override
-    public boolean isExistsTask(TaskDefine taskDefine) {
-        String zkPath = this.pathTask + "/" + taskDefine.stringKey();
+    public boolean isExistsTask(Task task) {
+        String zkPath = this.pathTask + "/" + task.stringKey();
         try {
-            return this.getZooKeeper().exists(zkPath, false) != null;
-        } catch (KeeperException | InterruptedException e) {
-            LOG.error("zk error", e);
+            return this.client.checkExists().forPath(zkPath) != null;
+        } catch (Exception e) {
+            log.error("zk error", e);
         }
         return false;
     }
 
     @Override
-    public void addTask(TaskDefine taskDefine) {
+    public void addTask(Task task) {
         try {
             String zkPath = this.pathTask;
-            zkPath = zkPath + "/" + taskDefine.stringKey();
-            if (this.getZooKeeper().exists(zkPath, false) == null) {
-                this.getZooKeeper().create(zkPath, null, this.zkManager.getAcl(), CreateMode.PERSISTENT);
+            zkPath = zkPath + "/" + task.stringKey();
+            if (this.client.checkExists().forPath(zkPath) == null) {
+                this.client.create().withMode(CreateMode.PERSISTENT).forPath(zkPath);
             }
-            byte[] data = this.getZooKeeper().getData(zkPath, null, null);
+            byte[] data = this.client.getData().forPath(zkPath);
             if (null == data || data.length == 0) {
-                if (StringUtils.isBlank(taskDefine.getType())) {
-                    taskDefine.setType(TaskDefine.TYPE_UNCODE_TASK);
+                if (StringUtils.isBlank(task.getType())) {
+                    task.setType(DefaultConstants.TYPE_TAROCO_TASK);
                 }
-                String json = this.gson.toJson(taskDefine);
-                this.getZooKeeper().setData(zkPath, json.getBytes(), -1);
+                String json = JsonUtil.object2Json(task);
+                this.client.setData().forPath(zkPath, json.getBytes());
             }
         } catch (Exception e) {
-            LOG.error("addTask failed:", e);
+            log.error("addTask failed:", e);
         }
     }
 
     @Override
-    public void updateTask(TaskDefine taskDefine) {
+    public void updateTask(Task task) {
         String zkPath = this.pathTask;
-        zkPath = zkPath + "/" + taskDefine.stringKey();
+        zkPath = zkPath + "/" + task.stringKey();
         try {
-            if (this.getZooKeeper().exists(zkPath, false) != null) {
-                byte[] data = this.getZooKeeper().getData(zkPath, null, null);
-                TaskDefine tmpTaskDefine;
+            if (this.client.checkExists().forPath(zkPath) != null) {
+                byte[] data = this.client.getData().forPath(zkPath);
+                Task tmpTask;
                 if (null != data) {
                     String json = new String(data);
-                    tmpTaskDefine = this.gson.fromJson(json, TaskDefine.class);
-                    tmpTaskDefine.valueOf(tmpTaskDefine);
+                    tmpTask = JsonUtil.json2Object(json, Task.class);
+                    assert tmpTask != null;
+                    tmpTask.valueOf(tmpTask);
                 } else {
-                    tmpTaskDefine = new TaskDefine();
+                    tmpTask = new Task();
                 }
-                tmpTaskDefine.valueOf(taskDefine);
-                String json = this.gson.toJson(tmpTaskDefine);
-                this.getZooKeeper().setData(zkPath, json.getBytes(), -1);
+                tmpTask.valueOf(task);
+                String json = JsonUtil.object2Json(tmpTask);
+                this.client.setData().forPath(zkPath, json.getBytes());
             }
         } catch (Exception e) {
-            LOG.error("updateTask failed:", e);
+            log.error("updateTask failed:", e);
         }
     }
 
     @Override
-    public void delTask(TaskDefine taskDefine) {
+    public void delTask(Task task) {
         try {
             String zkPath = this.pathTask;
-            if (this.getZooKeeper().exists(zkPath, false) != null) {
-                zkPath = zkPath + "/" + taskDefine.stringKey();
-                if (this.getZooKeeper().exists(zkPath, false) != null) {
-                    ZKTools.deleteTree(this.getZooKeeper(), zkPath);
+            if (this.client.checkExists().forPath(zkPath) != null) {
+                zkPath = zkPath + "/" + task.stringKey();
+                if (this.client.checkExists().forPath(zkPath) != null) {
+                    this.client.delete().deletingChildrenIfNeeded().forPath(zkPath);
                 }
             }
         } catch (Exception e) {
-            LOG.error("delTask failed:", e);
+            log.error("delTask failed:", e);
         }
     }
 
     @Override
-    public List<TaskDefine> selectTask() {
+    public List<Task> selectTask() {
         String zkPath = this.pathTask;
-        List<TaskDefine> taskDefines = new ArrayList<>();
+        List<Task> tasks = new ArrayList<>();
         try {
-            if (this.getZooKeeper().exists(zkPath, false) != null) {
-                List<String> childes = this.getZooKeeper().getChildren(zkPath, false);
+            if (this.client.checkExists().forPath(zkPath) != null) {
+                List<String> childes = this.client.getChildren().forPath(zkPath);
                 for (String child : childes) {
-                    byte[] data = this.getZooKeeper().getData(zkPath + "/" + child, null, null);
-                    TaskDefine taskDefine = null;
+                    byte[] data = this.client.getData().forPath(zkPath + "/" + child);
+                    Task task = null;
                     if (null != data) {
                         String json = new String(data);
-                        taskDefine = this.gson.fromJson(json, TaskDefine.class);
+                        task = JsonUtil.json2Object(json, Task.class);
                     } else {
-                        taskDefine = new TaskDefine();
+                        task = new Task();
                     }
                     String[] names = child.split("#");
+                    assert task != null;
                     if (StringUtils.isNotEmpty(names[0])) {
-                        taskDefine.setTargetBean(names[0]);
-                        taskDefine.setTargetMethod(names[1]);
+                        task.setTargetBean(names[0]);
+                        task.setTargetMethod(names[1]);
                     }
-                    List<String> sers = this.getZooKeeper().getChildren(zkPath + "/" + child, false);
-                    if (taskDefine != null && sers != null && sers.size() > 0) {
-                        taskDefine.setCurrentServer(sers.get(0));
-                        byte[] dataVal = this.getZooKeeper().getData(zkPath + "/" + child + "/" + sers.get(0), null, null);
+                    List<String> sers = this.client.getChildren().forPath(zkPath + "/" + child);
+                    if (sers != null && sers.size() > 0) {
+                        task.setCurrentServer(sers.get(0));
+                        byte[] dataVal = this.client.getData().forPath(zkPath + "/" + child + "/" + sers.get(0));
                         if (dataVal != null) {
                             String val = new String(dataVal);
                             String[] vals = val.split(":");
-                            taskDefine.setRunTimes(Integer.valueOf(vals[0]));
-                            taskDefine.setLastRunningTime(Long.valueOf(vals[1]));
+                            task.setRunTimes(Integer.valueOf(vals[0]));
+                            task.setLastRunningTime(Long.valueOf(vals[1]));
                             if (vals.length > 2 && StringUtils.isNotBlank(vals[2])) {
-                                taskDefine.setStatus(TaskDefine.STATUS_ERROR + ":" + vals[2]);
+                                task.setStatus(STATUS_ERROR + ":" + vals[2]);
                             }
                         }
                     }
-                    taskDefines.add(taskDefine);
+                    tasks.add(task);
                 }
             }
-        } catch (KeeperException | InterruptedException e) {
-            LOG.error("ZK error", e);
+        } catch (Exception e) {
+            log.error("ZK error", e);
         }
-        return taskDefines;
+        return tasks;
     }
 
     @Override
-    public TaskDefine selectTask(TaskDefine taskDefine) {
-        String zkPath = this.pathTask + "/" + taskDefine.stringKey();
+    public Task selectTask(Task task) {
+        String zkPath = this.pathTask + "/" + task.stringKey();
         try {
-            byte[] data = this.getZooKeeper().getData(zkPath, null, null);
+            byte[] data = this.client.getData().forPath(zkPath);
             if (null != data) {
                 String json = new String(data);
-                taskDefine = this.gson.fromJson(json, TaskDefine.class);
+                task = JsonUtil.json2Object(json, Task.class);
             } else {
-                taskDefine = new TaskDefine();
+                task = new Task();
             }
-            List<String> sers = this.getZooKeeper().getChildren(zkPath, false);
-            if (taskDefine != null && sers != null && sers.size() > 0) {
-                taskDefine.setCurrentServer(sers.get(0));
-                byte[] dataVal = this.getZooKeeper().getData(zkPath + "/" + sers.get(0), null, null);
+            List<String> sers = this.client.getChildren().forPath(zkPath);
+            if (task != null && sers != null && sers.size() > 0) {
+                task.setCurrentServer(sers.get(0));
+                byte[] dataVal = this.client.getData().forPath(zkPath + "/" + sers.get(0));
                 if (dataVal != null) {
                     String val = new String(dataVal);
                     String[] vals = val.split(":");
-                    taskDefine.setRunTimes(Integer.valueOf(vals[0]));
-                    taskDefine.setLastRunningTime(Long.valueOf(vals[1]));
+                    task.setRunTimes(Integer.valueOf(vals[0]));
+                    task.setLastRunningTime(Long.valueOf(vals[1]));
                     if (vals.length > 2 && StringUtils.isNotBlank(vals[2])) {
-                        taskDefine.setStatus(TaskDefine.STATUS_ERROR + ":" + vals[2]);
+                        task.setStatus(STATUS_ERROR + ":" + vals[2]);
                     }
                 }
             }
-        } catch (KeeperException | InterruptedException e) {
-            LOG.error("ZK error", e);
+        } catch (Exception e) {
+            log.error("ZK error", e);
         }
-        return taskDefine;
+        return task;
     }
 
 
