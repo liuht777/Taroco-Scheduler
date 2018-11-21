@@ -105,24 +105,24 @@ public class DynamicTaskManager {
                 if (scheduledMethodRunnable != null) {
                     if (StringUtils.isNotEmpty(cronExpression)) {
                         Trigger trigger = new CronTrigger(cronExpression);
-                        scheduledFuture = ConsoleManager.getSchedulerTaskManager().schedule(scheduledMethodRunnable, trigger);
+                        scheduledFuture = DynamicTaskHelper.getSchedulerTaskManager().schedule(scheduledMethodRunnable, trigger);
                     } else if (startTime != null) {
                         if (period > 0) {
-                            scheduledFuture = ConsoleManager.getSchedulerTaskManager().scheduleAtFixedRate(scheduledMethodRunnable, startTime, period);
+                            scheduledFuture = DynamicTaskHelper.getSchedulerTaskManager().scheduleAtFixedRate(scheduledMethodRunnable, startTime, period);
                         } else {
-                            scheduledFuture = ConsoleManager.getSchedulerTaskManager().schedule(scheduledMethodRunnable, startTime);
+                            scheduledFuture = DynamicTaskHelper.getSchedulerTaskManager().schedule(scheduledMethodRunnable, startTime);
                         }
                     } else if (period > 0) {
-                        scheduledFuture = ConsoleManager.getSchedulerTaskManager().scheduleAtFixedRate(scheduledMethodRunnable, period);
+                        scheduledFuture = DynamicTaskHelper.getSchedulerTaskManager().scheduleAtFixedRate(scheduledMethodRunnable, period);
                     }
                     if (null != scheduledFuture) {
                         SCHEDULE_FUTURES.put(scheduleKey, scheduledFuture);
                         log.debug("Building new schedule task, target bean " + targetBean + " target method " + targetMethod + ".");
                     }
                 } else {
-                    ConsoleManager.getSchedulerTaskManager().getScheduleTask()
+                    DynamicTaskHelper.getSchedulerTaskManager().getScheduleTask()
                             .saveRunningInfo(scheduleKey,
-                                    ConsoleManager.getSchedulerTaskManager().getCurrentScheduleServerUUid(), "bean not exists");
+                                    DynamicTaskHelper.getSchedulerTaskManager().getCurrentScheduleServerUUid(), "bean not exists");
                     log.debug("Bean name is not exists.");
                 }
             }
@@ -143,8 +143,8 @@ public class DynamicTaskManager {
         } catch (Exception e) {
             String name = ScheduleUtil.buildScheduleKey(targetBean, targetMethod, extKeySuffix);
             try {
-                ConsoleManager.getSchedulerTaskManager().getScheduleTask().saveRunningInfo(name,
-                        ConsoleManager.getSchedulerTaskManager().getCurrentScheduleServerUUid(), "method is null");
+                DynamicTaskHelper.getSchedulerTaskManager().getScheduleTask().saveRunningInfo(name,
+                        DynamicTaskHelper.getSchedulerTaskManager().getCurrentScheduleServerUUid(), "method is null");
             } catch (Exception e1) {
                 log.debug(e.getLocalizedMessage(), e);
             }

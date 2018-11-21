@@ -3,6 +3,7 @@ package io.github.liuht777.scheduler.config;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -17,7 +18,7 @@ public class TarocoSchedulerProperties {
     /**
      * ip black list
      */
-    private List<String> ipBlackList;
+    private List<String> ipBlackList = Collections.emptyList();
 
     /**
      * spring task scheduler pool size, default: 10
@@ -43,9 +44,9 @@ public class TarocoSchedulerProperties {
         private String rootPath = "/taroco/scheduler";
 
         /**
-         * zookeeper session timeout, default: 30000 ms
+         * zookeeper session timeout, default: 3000 ms
          */
-        private int sessionTimeout = 30000;
+        private int sessionTimeout = 3000;
 
         /**
          * connect timeout, default: 5000 ms

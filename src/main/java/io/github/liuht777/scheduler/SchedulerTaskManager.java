@@ -91,7 +91,6 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
         this.pathServer = rootPath + "/" + NODE_SERVER;
         this.taskTrigger = rootPath + "/" + NODE_TASK_TRIGGER;
         this.setPoolSize(this.schedulerProperties.getPoolSize());
-        ConsoleManager.setProperties(this.schedulerProperties);
         // 初始化 zookeeper 连接
         this.zkClient = new ZkClient(this.schedulerProperties);
         this.zkClient.getClient().getConnectionStateListenable().addListener((curatorFramework, state) -> {
@@ -140,19 +139,19 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
                     (client, event) -> {
                         switch (event.getType()) {
                             case CHILD_ADDED:
-                                log.info("add task trigger: {}", event.getData().getPath());
+                                log.info("监听到taskTrigger节点变化: 新增, path=: {}", event.getData().getPath());
                                 checkLocalTask();
-                                initPathAndWatchTaskTrigger(event.getData().getPath());
-                                log.info("继续下一次监听");
+                                //initPathAndWatchTaskTrigger(path);
+                                //log.info("继续下一次监听, path={}", path);
                                 break;
                             case CHILD_REMOVED:
-                                log.info("remove task trigger: {}", event.getData().getPath());
+                                log.info("监听到taskTrigger节点变化: 删除, path=: {}", event.getData().getPath());
                                 checkLocalTask();
-                                initPathAndWatchTaskTrigger(event.getData().getPath());
-                                log.info("继续下一次监听");
+                                //initPathAndWatchTaskTrigger(path);
+                                //log.info("继续下一次监听, path={}", path);
                                 break;
                             case CHILD_UPDATED:
-                                log.info("update task trigger: {}", event.getData().getPath());
+                                log.info("监听到taskTrigger节点变化: 更新, path=: {}", event.getData().getPath());
                                 break;
                             default:
                                 break;
@@ -181,19 +180,19 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
                     (client, event) -> {
                         switch (event.getType()) {
                             case CHILD_ADDED:
-                                log.info("add task trigger: {}", event.getData().getPath());
+                                log.info("监听到server或task节点变化: 新增, path=: {}", event.getData().getPath());
                                 assignScheduleTask(taskTrigger);
-                                initPathAndWatchTask(event.getData().getPath());
-                                log.info("继续下一次监听");
+                                //initPathAndWatchTask(path);
+                                //log.info("继续下一次监听, path={}", path);
                                 break;
                             case CHILD_REMOVED:
-                                log.info("remove task trigger: {}", event.getData().getPath());
+                                log.info("监听到server或task节点变化: 删除, path=: {}", event.getData().getPath());
                                 assignScheduleTask(taskTrigger);
-                                initPathAndWatchTask(event.getData().getPath());
-                                log.info("继续下一次监听");
+                                //initPathAndWatchTask(path);
+                                //log.info("继续下一次监听, path={}", path);
                                 break;
                             case CHILD_UPDATED:
-                                log.info("update task trigger: {}", event.getData().getPath());
+                                log.info("监听到server或task节点变化: 更新, path=: {}", event.getData().getPath());
                                 break;
                             default:
                                 break;
