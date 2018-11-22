@@ -1,7 +1,7 @@
 package io.github.liuht777.scheduler;
 
 import io.github.liuht777.scheduler.core.ScheduledMethodRunnable;
-import io.github.liuht777.scheduler.core.TaskDefine;
+import io.github.liuht777.scheduler.core.Task;
 import io.github.liuht777.scheduler.util.ScheduleUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -35,29 +35,29 @@ public class DynamicTaskManager {
     /**
      * 缓存 scheduleKey 与 TaskDefine任务具体信息
      */
-    private static final Map<String, TaskDefine> TASKS = new ConcurrentHashMap<>();
+    private static final Map<String, Task> TASKS = new ConcurrentHashMap<>();
 
     /**
      * 启动定时任务
      *
-     * @param taskDefine  定时任务
+     * @param task  定时任务
      * @param currentTime 时间
      */
-    public static void scheduleTask(TaskDefine taskDefine, Date currentTime) {
-        log.info("开始启动定时任务: " + taskDefine.stringKey());
+    public static void scheduleTask(Task task, Date currentTime) {
+        log.info("开始启动定时任务: " + task.stringKey());
         boolean newTask = true;
-        if (SCHEDULE_FUTURES.containsKey(taskDefine.stringKey())) {
-            if (taskDefine.equals(TASKS.get(taskDefine.stringKey()))) {
-                log.info("定时任务已经存在: " + taskDefine.stringKey() + ", 不需要重新构建");
+        if (SCHEDULE_FUTURES.containsKey(task.stringKey())) {
+            if (task.equals(TASKS.get(task.stringKey()))) {
+                log.info("定时任务已经存在: " + task.stringKey() + ", 不需要重新构建");
                 newTask = false;
             }
         }
         if (newTask) {
-            TASKS.put(taskDefine.stringKey(), taskDefine);
-            scheduleTask(taskDefine.getTargetBean(), taskDefine.getTargetMethod(),
-                    taskDefine.getCronExpression(), taskDefine.getStartTime(), taskDefine.getPeriod(),
-                    taskDefine.getParams(), taskDefine.getExtKeySuffix(), false);
-            log.info("成功添加动态任务: " + taskDefine.stringKey());
+            TASKS.put(task.stringKey(), task);
+            scheduleTask(task.getTargetBean(), task.getTargetMethod(),
+                    task.getCronExpression(), task.getStartTime(), task.getPeriod(),
+                    task.getParams(), task.getExtKeySuffix(), false);
+            log.info("成功添加动态任务: " + task.stringKey());
         }
     }
 
@@ -105,23 +105,24 @@ public class DynamicTaskManager {
                 if (scheduledMethodRunnable != null) {
                     if (StringUtils.isNotEmpty(cronExpression)) {
                         Trigger trigger = new CronTrigger(cronExpression);
-                        scheduledFuture = ConsoleManager.getSchedulerTaskManager().schedule(scheduledMethodRunnable, trigger);
+                        scheduledFuture = DynamicTaskHelper.getSchedulerTaskManager().schedule(scheduledMethodRunnable, trigger);
                     } else if (startTime != null) {
                         if (period > 0) {
-                            scheduledFuture = ConsoleManager.getSchedulerTaskManager().scheduleAtFixedRate(scheduledMethodRunnable, startTime, period);
+                            scheduledFuture = DynamicTaskHelper.getSchedulerTaskManager().scheduleAtFixedRate(scheduledMethodRunnable, startTime, period);
                         } else {
-                            scheduledFuture = ConsoleManager.getSchedulerTaskManager().schedule(scheduledMethodRunnable, startTime);
+                            scheduledFuture = DynamicTaskHelper.getSchedulerTaskManager().schedule(scheduledMethodRunnable, startTime);
                         }
                     } else if (period > 0) {
-                        scheduledFuture = ConsoleManager.getSchedulerTaskManager().scheduleAtFixedRate(scheduledMethodRunnable, period);
+                        scheduledFuture = DynamicTaskHelper.getSchedulerTaskManager().scheduleAtFixedRate(scheduledMethodRunnable, period);
                     }
                     if (null != scheduledFuture) {
                         SCHEDULE_FUTURES.put(scheduleKey, scheduledFuture);
                         log.debug("Building new schedule task, target bean " + targetBean + " target method " + targetMethod + ".");
                     }
                 } else {
-                    ConsoleManager.getSchedulerTaskManager().getScheduleTask()
-                            .saveRunningInfo(scheduleKey, ConsoleManager.getSchedulerTaskManager().getScheduleServerUUid(), "bean not exists");
+                    DynamicTaskHelper.getSchedulerTaskManager().getScheduleTask()
+                            .saveRunningInfo(scheduleKey,
+                                    DynamicTaskHelper.getSchedulerTaskManager().getCurrentScheduleServerUUid(), "bean not exists");
                     log.debug("Bean name is not exists.");
                 }
             }
@@ -142,7 +143,8 @@ public class DynamicTaskManager {
         } catch (Exception e) {
             String name = ScheduleUtil.buildScheduleKey(targetBean, targetMethod, extKeySuffix);
             try {
-                ConsoleManager.getSchedulerTaskManager().getScheduleTask().saveRunningInfo(name, ConsoleManager.getSchedulerTaskManager().getScheduleServerUUid(), "method is null");
+                DynamicTaskHelper.getSchedulerTaskManager().getScheduleTask().saveRunningInfo(name,
+                        DynamicTaskHelper.getSchedulerTaskManager().getCurrentScheduleServerUUid(), "method is null");
             } catch (Exception e1) {
                 log.debug(e.getLocalizedMessage(), e);
             }

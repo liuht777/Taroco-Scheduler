@@ -190,15 +190,15 @@ public class UncodeScheduleApplication {
 
 1 动态添加任务
 
-ConsoleManager.addScheduleTask(TaskDefine taskDefine);
+ConsoleManager.addScheduleTask(TaskDefine task);
 
 2 动态删除任务
 
-ConsoleManager.delScheduleTask(TaskDefine taskDefine);
+ConsoleManager.delScheduleTask(TaskDefine task);
 
 3 动态更新任务
 
-ConsoleManager.updateScheduleTask(TaskDefine taskDefine);
+ConsoleManager.updateScheduleTask(TaskDefine task);
 
 4 查询任务列表
 

@@ -22,66 +22,66 @@ public interface IScheduleTask {
     /**
      * 添加指定任务
      *
-     * @param taskDefine 任务详情
+     * @param task 任务详情
      *                   targetBean 不能为空
      *                   targetMethod 不能为空
      */
-    void addTask(TaskDefine taskDefine);
+    void addTask(Task task);
 
     /**
      * 更新指定任务
      *
-     * @param taskDefine 任务详情
+     * @param task 任务详情
      *                   targetBean 不能为空
      *                   targetMethod 不能为空
      */
-    void updateTask(TaskDefine taskDefine);
+    void updateTask(Task task);
 
     /**
      * 删除指定任务
      *
-     * @param taskDefine 任务详情
+     * @param task 任务详情
      *                   targetBean 不能为空
      *                   targetMethod 不能为空
      */
-    void delTask(TaskDefine taskDefine);
+    void delTask(Task task);
 
     /**
      * 返回所有任务
      *
-     * @return List<TaskDefine>
+     * @return List<Task>
      */
-    List<TaskDefine> selectTask();
+    List<Task> selectTask();
 
     /**
      * 判断指定任务是否存在
      *
-     * @param taskDefine 任务详情
+     * @param task 任务详情
      *                   targetBean 不能为空
      *                   targetMethod 不能为空
      * @return 是否存在
      */
-    boolean isExistsTask(TaskDefine taskDefine);
+    boolean isExistsTask(Task task);
 
     /**
      * 返回指定任务详情
      *
-     * @param taskDefine 任务数据
+     * @param task 任务数据
      *                   targetBean 不能为空
      *                   targetMethod 不能为空
      * @return 任务详情
      */
-    TaskDefine selectTask(TaskDefine taskDefine);
+    Task selectTask(Task task);
 
     /**
      * 保存任务执行信息
      *
      * @param taskName 任务名称
      * @param serverUuid 服务器唯一标识
-     * @param msg 附加消息
+     * @param errorMsg 错误消息, 标识任务执行失败
      * @return 保存结果
      */
-    boolean saveRunningInfo(String taskName, String serverUuid, String msg);
+    boolean saveRunningInfo(String taskName, String serverUuid, String errorMsg);
 
     /**
      * 保存任务执行信息
