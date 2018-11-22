@@ -106,14 +106,13 @@ public class ScheduleTask implements IScheduleTask {
         try {
             String zkPath = this.pathTask;
             zkPath = zkPath + "/" + task.stringKey();
-            if (this.client.checkExists().forPath(zkPath) == null) {
-                this.client.create().withMode(CreateMode.PERSISTENT).forPath(zkPath);
-            }
             if (StringUtils.isBlank(task.getType())) {
                 task.setType(DefaultConstants.TYPE_TAROCO_TASK);
             }
             String json = JsonUtil.object2Json(task);
-            this.client.setData().forPath(zkPath, json.getBytes());
+            if (this.client.checkExists().forPath(zkPath) == null) {
+                this.client.create().withMode(CreateMode.PERSISTENT).forPath(zkPath, json.getBytes());
+            }
         } catch (Exception e) {
             log.error("addTask failed:", e);
         }
