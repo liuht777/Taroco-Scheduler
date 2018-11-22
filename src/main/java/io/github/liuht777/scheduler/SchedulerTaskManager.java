@@ -18,6 +18,7 @@ import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.scheduling.Trigger;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 import java.lang.reflect.Method;
@@ -92,6 +93,7 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
                 case RECONNECTED:
                     // 挂起或者丢失连接后重新连接
                     log.info("reconnected with zookeeper");
+                    this.currenScheduleServer.setRegister(false);
                     initialData();
                     break;
                 default:
@@ -107,24 +109,37 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
     public void initialData() {
         this.scheduleTask = new ScheduleTask(this.zkClient.getClient(), this.pathTask);
         this.schedulerServer = new SchedulerServer(this.zkClient, this.pathServer, this.pathTask);
-        // 监听配置
-        this.initPathAndWatch(this.pathServer);
-        this.initPathAndWatch(this.pathTask);
+        this.initPath(this.pathServer);
+        this.initPath(this.pathTask);
+        this.watchPath(this.pathServer);
+        this.watchPath(this.pathTask);
         // 注册当前server
         this.schedulerServer.registerScheduleServer(this.currenScheduleServer);
     }
 
     /**
-     * 初始化并且监听server节点
-     * 触发重新分配任务
+     * 初始化path
      */
-    private void initPathAndWatch(String path) {
+    private void initPath(String path) {
         try {
             if (this.zkClient.getClient().checkExists().forPath(path) == null) {
                 this.zkClient.getClient().create()
                         .creatingParentsIfNeeded()
                         .withMode(CreateMode.PERSISTENT).forPath(path);
             }
+        } catch (Exception e) {
+            log.error("initPath failed", e);
+        }
+    }
+
+    /**
+     * 监听指定节点
+     *
+     * 主要做重新分配任务使用
+     * @param path
+     */
+    private void watchPath (String path) {
+        try {
             // 监听子节点变化情况
             final PathChildrenCache watcher = new PathChildrenCache(this.zkClient.getClient(), path, true);
             watcher.start(PathChildrenCache.StartMode.POST_INITIALIZED_EVENT);
@@ -134,12 +149,10 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
                             case CHILD_ADDED:
                                 log.info("监听到节点变化: 新增path=: {}", event.getData().getPath());
                                 assignScheduleTask();
-                                checkLocalTask();
                                 break;
                             case CHILD_REMOVED:
                                 log.info("监听到节点变化: 删除path=: {}", event.getData().getPath());
                                 assignScheduleTask();
-                                checkLocalTask();
                                 break;
                             default:
                                 break;
@@ -147,7 +160,7 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
                     }
             );
         } catch (Exception e) {
-            log.error("initPathAndWatchTask failed", e);
+            log.error("watchPath failed", e);
         }
     }
 
@@ -168,8 +181,9 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
     }
 
     /**
-     * 检查/执行 本地任务
+     * 定时每15秒一次 检查/执行 本地任务
      */
+    @Scheduled(cron = "0/15 * * * * ? ")
     public void checkLocalTask() {
         schedulerServer.checkLocalTask(this.currenScheduleServer.getUuid());
     }

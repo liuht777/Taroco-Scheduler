@@ -183,7 +183,7 @@ public class SchedulerServer implements ISchedulerServer {
             String zkPath = this.pathTask;
             List<String> taskNames = this.zkClient.getClient().getChildren().forPath(zkPath);
             if (CollectionUtils.isEmpty(taskNames)) {
-                log.info("当前server:[" + currentUuid + "]: 检查本地任务结束, 任务列表为空");
+                log.debug("当前server:[" + currentUuid + "]: 检查本地任务结束, 任务列表为空");
                 return;
             }
             List<String> localTasks = new ArrayList<>();

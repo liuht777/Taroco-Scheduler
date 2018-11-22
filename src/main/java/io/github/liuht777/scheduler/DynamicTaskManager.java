@@ -48,7 +48,7 @@ public class DynamicTaskManager {
         boolean newTask = true;
         if (SCHEDULE_FUTURES.containsKey(task.stringKey())) {
             if (task.equals(TASKS.get(task.stringKey()))) {
-                log.info("定时任务已经存在: " + task.stringKey() + ", 不需要重新构建");
+                log.debug("定时任务已经存在: " + task.stringKey() + ", 不需要重新构建");
                 newTask = false;
             }
         }
@@ -57,7 +57,7 @@ public class DynamicTaskManager {
             scheduleTask(task.getTargetBean(), task.getTargetMethod(),
                     task.getCronExpression(), task.getStartTime(), task.getPeriod(),
                     task.getParams(), task.getExtKeySuffix());
-            log.info("成功添加动态任务: " + task.stringKey());
+            log.debug("成功添加动态任务: " + task.stringKey());
         }
     }
 
