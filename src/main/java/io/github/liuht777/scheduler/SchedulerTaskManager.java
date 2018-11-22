@@ -129,7 +129,7 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
         try {
             if (this.zkClient.getClient().checkExists().forPath(path) == null) {
                 this.zkClient.getClient().create()
-                        .creatingParentContainersIfNeeded()
+                        .creatingParentsIfNeeded()
                         .withMode(CreateMode.PERSISTENT).forPath(path);
             }
             // 监听子节点变化情况
@@ -170,7 +170,7 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
         try {
             if (this.zkClient.getClient().checkExists().forPath(path) == null) {
                 this.zkClient.getClient().create()
-                        .creatingParentContainersIfNeeded()
+                        .creatingParentsIfNeeded()
                         .withMode(CreateMode.PERSISTENT).forPath(path);
             }
             // 监听子节点变化情况

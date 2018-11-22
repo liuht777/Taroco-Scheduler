@@ -75,7 +75,7 @@ public class ZkClient {
         try {
             if (client.checkExists().forPath(rootPath) == null) {
                 client.create()
-                        .creatingParentContainersIfNeeded()
+                        .creatingParentsIfNeeded()
                         .withMode(CreateMode.PERSISTENT).forPath(rootPath, Version.getVersion().getBytes());
             } else {
                 //先校验父亲节点，本身是否已经是schedule的目录

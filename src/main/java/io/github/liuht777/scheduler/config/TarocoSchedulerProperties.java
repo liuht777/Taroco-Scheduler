@@ -49,8 +49,8 @@ public class TarocoSchedulerProperties {
         private int sessionTimeout = 3000;
 
         /**
-         * connect timeout, default: 5000 ms
+         * connect timeout, default: 3000 ms
          */
-        private int connectionTimeout = 5000;
+        private int connectionTimeout = 3000;
     }
 }
