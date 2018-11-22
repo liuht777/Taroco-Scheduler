@@ -133,10 +133,12 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
                         switch (event.getType()) {
                             case CHILD_ADDED:
                                 log.info("监听到task节点变化: 新增task=: {}", event.getData().getPath());
+                                assignScheduleTask();
                                 checkLocalTask();
                                 break;
                             case CHILD_REMOVED:
                                 log.info("监听到task节点变化: 删除task=: {}", event.getData().getPath());
+                                assignScheduleTask();
                                 checkLocalTask();
                                 break;
                             default:
@@ -169,10 +171,12 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
                             case CHILD_ADDED:
                                 log.info("监听到server节点变化: 新增server=: {}", event.getData().getPath());
                                 assignScheduleTask();
+                                checkLocalTask();
                                 break;
                             case CHILD_REMOVED:
                                 log.info("监听到server节点变化: 删除server=: {}", event.getData().getPath());
                                 assignScheduleTask();
+                                checkLocalTask();
                                 break;
                             default:
                                 break;
