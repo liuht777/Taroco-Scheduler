@@ -78,10 +78,10 @@ public interface IScheduleTask {
      *
      * @param taskName 任务名称
      * @param serverUuid 服务器唯一标识
-     * @param msg 附加消息
+     * @param errorMsg 错误消息, 标识任务执行失败
      * @return 保存结果
      */
-    boolean saveRunningInfo(String taskName, String serverUuid, String msg);
+    boolean saveRunningInfo(String taskName, String serverUuid, String errorMsg);
 
     /**
      * 保存任务执行信息

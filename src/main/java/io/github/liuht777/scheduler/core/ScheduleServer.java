@@ -40,41 +40,8 @@ public class ScheduleServer {
     private Timestamp registerTime;
 
     /**
-     * 最后一次心跳通知时间
+     * 是否注册到server
      */
-    private Timestamp heartBeatTime;
-
-    /**
-     * 最后一次取数据时间
-     */
-    private Timestamp lastFetchDataTime;
-
-    /**
-     * 处理描述信息，例如读取的任务数量，处理成功的任务数量，处理失败的数量，处理耗时
-     * FetchDataCount=4430,FetcheDataNum=438570,DealDataSucess=438570,DealDataFail=0,DealSpendTime=651066
-     */
-    private String dealInfoDesc;
-
-    /**
-     * 下次执行时间
-     */
-    private String nextRunStartTime;
-
-    /**
-     * 下次执行结束时间
-     */
-    private String nextRunEndTime;
-
-    /**
-     * 配置中心的当前时间
-     */
-    private Timestamp centerServerTime;
-
-    /**
-     * 数据版本号
-     */
-    private long version;
-
     private boolean isRegister;
 
     public ScheduleServer() {
@@ -94,9 +61,6 @@ public class ScheduleServer {
         result.ip = ScheduleUtil.getLocalIP();
         result.hostName = ScheduleUtil.getLocalHostName();
         result.registerTime = new Timestamp(currentTime);
-        result.heartBeatTime = null;
-        result.dealInfoDesc = "调度初始化";
-        result.version = 0;
         result.uuid = result.ip
                 + "$"
                 + (UUID.randomUUID().toString().replaceAll("-", "")

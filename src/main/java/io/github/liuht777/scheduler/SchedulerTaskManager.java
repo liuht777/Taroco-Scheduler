@@ -111,13 +111,13 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
      * 在Zk状态正常后回调数据初始化
      */
     public void initialData() {
-        // 创建父节点 判断父节点是否可用
+        // 监听配置
         this.initPathAndWatchTask(this.pathServer);
         this.initPathAndWatchTask(this.pathTask);
         this.initPathAndWatchTaskTrigger(this.taskTrigger);
         this.scheduleTask = new ScheduleTask(this.zkClient.getClient(), this.pathTask);
         this.schedulerServer = new SchedulerServer(this.zkClient, this.pathServer, this.pathTask);
-        // 注册调度管理器
+        // 注册当前server
         this.schedulerServer.registerScheduleServer(this.currenScheduleServer);
     }
 
@@ -141,17 +141,10 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
                             case CHILD_ADDED:
                                 log.info("监听到taskTrigger节点变化: 新增, path=: {}", event.getData().getPath());
                                 checkLocalTask();
-                                //initPathAndWatchTaskTrigger(path);
-                                //log.info("继续下一次监听, path={}", path);
                                 break;
                             case CHILD_REMOVED:
                                 log.info("监听到taskTrigger节点变化: 删除, path=: {}", event.getData().getPath());
                                 checkLocalTask();
-                                //initPathAndWatchTaskTrigger(path);
-                                //log.info("继续下一次监听, path={}", path);
-                                break;
-                            case CHILD_UPDATED:
-                                log.info("监听到taskTrigger节点变化: 更新, path=: {}", event.getData().getPath());
                                 break;
                             default:
                                 break;
@@ -182,17 +175,10 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
                             case CHILD_ADDED:
                                 log.info("监听到server或task节点变化: 新增, path=: {}", event.getData().getPath());
                                 assignScheduleTask(taskTrigger);
-                                //initPathAndWatchTask(path);
-                                //log.info("继续下一次监听, path={}", path);
                                 break;
                             case CHILD_REMOVED:
                                 log.info("监听到server或task节点变化: 删除, path=: {}", event.getData().getPath());
                                 assignScheduleTask(taskTrigger);
-                                //initPathAndWatchTask(path);
-                                //log.info("继续下一次监听, path={}", path);
-                                break;
-                            case CHILD_UPDATED:
-                                log.info("监听到server或task节点变化: 更新, path=: {}", event.getData().getPath());
                                 break;
                             default:
                                 break;
@@ -227,7 +213,7 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
     }
 
     /**
-     * 检查本地任务
+     * 检查/执行 本地任务
      */
     public void checkLocalTask() {
         schedulerServer.checkLocalTask(this.currenScheduleServer.getUuid());
@@ -250,14 +236,14 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
                     isOwner = schedulerServer.isOwner(name, currenScheduleServer.getUuid());
                     isRunning = scheduleTask.isRunning(name);
                     if (isOwner && isRunning) {
-                        String msg = null;
+                        String errorMsg = null;
                         try {
                             runnable.run();
                             log.info("任务[" + name + "] 成功触发!");
                         } catch (Exception e) {
-                            msg = e.getLocalizedMessage();
+                            errorMsg = e.getLocalizedMessage();
                         }
-                        scheduleTask.saveRunningInfo(name, currenScheduleServer.getUuid(), msg);
+                        scheduleTask.saveRunningInfo(name, currenScheduleServer.getUuid(), errorMsg);
                     } else {
                         if (!isOwner) {
                             log.debug("任务[" + name + "] 触发失败, 不属于当前server[" + currenScheduleServer.getUuid() + "]");
@@ -317,12 +303,12 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
             Task taskDefine = resolveTaskName(task);
             if (taskDefine.getType().equals(DefaultConstants.TYPE_SPRING_TASK)) {
                 super.scheduleAtFixedRate(task, period);
-                log.debug(":添加本地任务[" + taskDefine.stringKey() + "]");
+                log.info(":添加本地任务[" + taskDefine.stringKey() + "]");
             } else {
                 taskDefine.setPeriod(period);
                 scheduleTask.addTask(taskDefine);
                 scheduledFuture = super.scheduleAtFixedRate(taskWrapper(task), period);
-                log.debug(currenScheduleServer.getUuid() + ":自动向集群注册任务[" + taskDefine.stringKey() + "]");
+                log.info(currenScheduleServer.getUuid() + ":自动向集群注册任务[" + taskDefine.stringKey() + "]");
             }
 
         } catch (Exception e) {
@@ -338,7 +324,7 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
             Task taskDefine = resolveTaskName(task);
             if (taskDefine.getType().equals(DefaultConstants.TYPE_SPRING_TASK)) {
                 super.schedule(task, trigger);
-                log.debug(":添加本地任务[" + taskDefine.stringKey() + "]");
+                log.info(":添加本地任务[" + taskDefine.stringKey() + "]");
             } else {
                 String cronEx = trigger.toString();
                 int index = cronEx.indexOf(":");
@@ -348,7 +334,7 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
                 }
                 scheduleTask.addTask(taskDefine);
                 scheduledFuture = super.schedule(taskWrapper(task), trigger);
-                log.debug(currenScheduleServer.getUuid() + ":自动向集群注册任务[" + taskDefine.stringKey() + "]");
+                log.info(currenScheduleServer.getUuid() + ":自动向集群注册任务[" + taskDefine.stringKey() + "]");
             }
         } catch (Exception e) {
             log.error("update task error", e);
@@ -363,12 +349,12 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
             Task taskDefine = resolveTaskName(task);
             if (taskDefine.getType().equals(DefaultConstants.TYPE_SPRING_TASK)) {
                 super.schedule(task, startTime);
-                log.debug(":添加本地任务[" + taskDefine.stringKey() + "]");
+                log.info(":添加本地任务[" + taskDefine.stringKey() + "]");
             } else {
                 taskDefine.setStartTime(startTime);
                 scheduleTask.addTask(taskDefine);
                 scheduledFuture = super.schedule(taskWrapper(task), startTime);
-                log.debug(currenScheduleServer.getUuid() + ":自动向集群注册任务[" + taskDefine.stringKey() + "]");
+                log.info(currenScheduleServer.getUuid() + ":自动向集群注册任务[" + taskDefine.stringKey() + "]");
             }
         } catch (Exception e) {
             log.error("update task error", e);
@@ -383,13 +369,13 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
             Task taskDefine = resolveTaskName(task);
             if (taskDefine.getType().equals(DefaultConstants.TYPE_SPRING_TASK)) {
                 super.scheduleAtFixedRate(task, startTime, period);
-                log.debug(":添加本地任务[" + taskDefine.stringKey() + "]");
+                log.info(":添加本地任务[" + taskDefine.stringKey() + "]");
             } else {
                 taskDefine.setStartTime(startTime);
                 taskDefine.setPeriod(period);
                 scheduleTask.addTask(taskDefine);
                 scheduledFuture = super.scheduleAtFixedRate(taskWrapper(task), startTime, period);
-                log.debug(currenScheduleServer.getUuid() + ":自动向集群注册任务[" + taskDefine.stringKey() + "]");
+                log.info(currenScheduleServer.getUuid() + ":自动向集群注册任务[" + taskDefine.stringKey() + "]");
             }
         } catch (Exception e) {
             log.error("update task error", e);
@@ -404,13 +390,13 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
             Task taskDefine = resolveTaskName(task);
             if (taskDefine.getType().equals(DefaultConstants.TYPE_SPRING_TASK)) {
                 super.scheduleWithFixedDelay(task, startTime, delay);
-                log.debug(":添加本地任务[" + taskDefine.stringKey() + "]");
+                log.info(":添加本地任务[" + taskDefine.stringKey() + "]");
             } else {
                 taskDefine.setStartTime(startTime);
                 taskDefine.setPeriod(delay);
                 scheduleTask.addTask(taskDefine);
                 scheduledFuture = super.scheduleWithFixedDelay(taskWrapper(task), startTime, delay);
-                log.debug(currenScheduleServer.getUuid() + ":自动向集群注册任务[" + taskDefine.stringKey() + "]");
+                log.info(currenScheduleServer.getUuid() + ":自动向集群注册任务[" + taskDefine.stringKey() + "]");
             }
         } catch (Exception e) {
             log.error("update task error", e);
@@ -425,12 +411,12 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
             Task taskDefine = resolveTaskName(task);
             if (taskDefine.getType().equals(DefaultConstants.TYPE_SPRING_TASK)) {
                 super.scheduleWithFixedDelay(task, delay);
-                log.debug(":添加本地任务[" + taskDefine.stringKey() + "]");
+                log.info(":添加本地任务[" + taskDefine.stringKey() + "]");
             } else {
                 taskDefine.setPeriod(delay);
                 scheduleTask.addTask(taskDefine);
                 scheduledFuture = super.scheduleWithFixedDelay(taskWrapper(task), delay);
-                log.debug(currenScheduleServer.getUuid() + ":自动向集群注册任务[" + taskDefine.stringKey() + "]");
+                log.info(currenScheduleServer.getUuid() + ":自动向集群注册任务[" + taskDefine.stringKey() + "]");
             }
         } catch (Exception e) {
             log.error("update task error", e);

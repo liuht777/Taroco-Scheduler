@@ -61,7 +61,7 @@ public class ScheduleTask implements IScheduleTask {
     }
 
     @Override
-    public boolean saveRunningInfo(String name, String uuid, String msg) {
+    public boolean saveRunningInfo(String name, String uuid, String errorMsg) {
         //查看集群中是否注册当前任务，如果没有就自动注册
         String zkPath = this.pathTask + "/" + name;
         //判断是否分配给当前节点
@@ -77,8 +77,8 @@ public class ScheduleTask implements IScheduleTask {
                 }
                 times++;
                 String newVal;
-                if (StringUtils.isNotBlank(msg)) {
-                    newVal = "0:" + System.currentTimeMillis() + ":" + msg;
+                if (StringUtils.isNotBlank(errorMsg)) {
+                    newVal = "0:" + System.currentTimeMillis() + ":" + errorMsg;
                 } else {
                     newVal = times + ":" + System.currentTimeMillis();
                 }

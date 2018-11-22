@@ -11,7 +11,6 @@ import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.data.Stat;
 import org.springframework.util.CollectionUtils;
 
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -74,13 +73,10 @@ public class SchedulerServer implements ISchedulerServer {
             realPath = this.zkClient.getClient().create().withMode(CreateMode.EPHEMERAL_SEQUENTIAL)
                     .forPath(zkServerPath);
             server.setUuid(realPath.substring(realPath.lastIndexOf("/") + 1));
-
-            Timestamp heartBeatTime = new Timestamp(getSystemTime());
-            server.setHeartBeatTime(heartBeatTime);
-
             String valueString = JsonUtil.object2Json(server);
             this.zkClient.getClient().setData().forPath(realPath, valueString.getBytes());
             server.setRegister(true);
+            log.info("注册server成功: {}", server.getUuid());
         } catch (Exception e) {
             log.error("registerScheduleServer failed:", e);
         }
@@ -116,48 +112,37 @@ public class SchedulerServer implements ISchedulerServer {
         }
         try {
             String zkPath = this.pathTask;
-            if (this.zkClient.getClient().checkExists().forPath(zkPath) == null) {
-                this.zkClient.getClient().create()
-                        .withMode(CreateMode.PERSISTENT).forPath(zkPath);
+            List<String> taskNames = this.zkClient.getClient().getChildren().forPath(zkPath);
+            if (CollectionUtils.isEmpty(taskNames)) {
+                log.info("当前server:[" + currentUuid + "]: 分配结束,没有集群任务");
+                return;
             }
-            List<String> children = this.zkClient.getClient().getChildren().forPath(zkPath);
-            if (null != children && children.size() > 0) {
-                for (String taskName : children) {
-                    String taskPath = zkPath + "/" + taskName;
-                    if (this.zkClient.getClient().checkExists().forPath(taskPath) == null) {
-                        this.zkClient.getClient().create()
-                                .withMode(CreateMode.PERSISTENT).forPath(taskPath);
-                    }
-
-                    List<String> taskServerIds = this.zkClient.getClient().getChildren().forPath(taskPath);
-                    if (CollectionUtils.isEmpty(taskServerIds)) {
-                        // 没有找到目标server信息, 执行分配任务给server节点
-                        assignServer2Task(taskServerList, taskPath, taskTrigger, taskName);
-                    } else {
-                        boolean hasAssignSuccess = false;
-                        for (String serverId : taskServerIds) {
-                            if (taskServerList.contains(serverId)) {
-                                //防止重复分配任务，如果已经成功分配，第二个以后都删除
-                                if (hasAssignSuccess) {
-                                    this.zkClient.getClient().delete().deletingChildrenIfNeeded()
-                                            .forPath(taskPath + "/" + serverId);
-                                } else {
-                                    hasAssignSuccess = true;
-                                    continue;
-                                }
+            for (String taskName : taskNames) {
+                String taskPath = zkPath + "/" + taskName;
+                List<String> taskServerIds = this.zkClient.getClient().getChildren().forPath(taskPath);
+                if (CollectionUtils.isEmpty(taskServerIds)) {
+                    // 没有找到目标server信息, 执行分配任务给server节点
+                    assignServer2Task(taskServerList, taskPath, taskTrigger, taskName);
+                } else {
+                    boolean hasAssignSuccess = false;
+                    for (String serverId : taskServerIds) {
+                        if (taskServerList.contains(serverId)) {
+                            //防止重复分配任务，如果已经成功分配，第二个以后都删除
+                            if (hasAssignSuccess) {
+                                this.zkClient.getClient().delete().deletingChildrenIfNeeded()
+                                        .forPath(taskPath + "/" + serverId);
+                            } else {
+                                hasAssignSuccess = true;
+                                continue;
                             }
-                            this.zkClient.getClient().delete().deletingChildrenIfNeeded()
-                                    .forPath(taskPath + "/" + serverId);
                         }
-                        if (!hasAssignSuccess) {
-                            assignServer2Task(taskServerList, taskPath, taskTrigger, taskName);
-                        }
+                        // 不在taskServerList当中, 直接删除
+                        this.zkClient.getClient().delete().deletingChildrenIfNeeded()
+                                .forPath(taskPath + "/" + serverId);
                     }
-
-                }
-            } else {
-                if (log.isDebugEnabled()) {
-                    log.debug(currentUuid + ":没有集群任务");
+                    if (!hasAssignSuccess) {
+                        assignServer2Task(taskServerList, taskPath, taskTrigger, taskName);
+                    }
                 }
             }
         } catch (Exception e) {
@@ -179,11 +164,14 @@ public class SchedulerServer implements ISchedulerServer {
         if (pos.intValue() > taskServerList.size() - 1) {
             pos.set(0);
         }
+        // 轮询分配给server
         String serverId = taskServerList.get(pos.intValue());
         pos.incrementAndGet();
         try {
             if (this.zkClient.getClient().checkExists().forPath(taskPath) != null) {
-                this.zkClient.getClient().create().withMode(CreateMode.PERSISTENT).forPath(taskPath + "/" + serverId);
+                final String runningInfo = "0:" + System.currentTimeMillis();
+                this.zkClient.getClient().create()
+                        .withMode(CreateMode.PERSISTENT).forPath(taskPath + "/" + serverId, runningInfo.getBytes());
                 triggerTaskModified(taskTrigger, taskName);
                 log.info("成功分配任务 [" + taskPath + "]" + " 给 server [" + serverId + "]");
             }
@@ -216,7 +204,7 @@ public class SchedulerServer implements ISchedulerServer {
                 for (String taskName : children) {
                     if (isOwner(taskName, currentUuid)) {
                         String taskPath = zkPath + "/" + taskName;
-                        byte[] data =this.zkClient.getClient().getData().forPath(taskPath);
+                        byte[] data = this.zkClient.getClient().getData().forPath(taskPath);
                         if (null != data) {
                             String json = new String(data);
                             Task td = JsonUtil.json2Object(json, Task.class);
