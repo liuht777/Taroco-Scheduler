@@ -211,7 +211,7 @@ public class SchedulerServerForZookeeper implements ISchedulerServer {
         try {
             String zkPath = this.pathTask;
             List<String> children = this.zkClient.getClient().getChildren().forPath(zkPath);
-            List<String> ownerTask = new ArrayList<>();
+            List<String> localTasks = new ArrayList<>();
             if (null != children && children.size() > 0) {
                 for (String taskName : children) {
                     if (isOwner(taskName, currentUuid)) {
@@ -222,7 +222,7 @@ public class SchedulerServerForZookeeper implements ISchedulerServer {
                             Task td = JsonUtil.json2Object(json, Task.class);
                             Task task = new Task();
                             task.valueOf(td);
-                            ownerTask.add(taskName);
+                            localTasks.add(taskName);
                             if (DefaultConstants.TYPE_TAROCO_TASK.equals(task.getType())) {
                                 // 动态任务才使用 DynamicTaskManager启动
                                 DynamicTaskManager.scheduleTask(task, new Date(getSystemTime()));
@@ -231,7 +231,7 @@ public class SchedulerServerForZookeeper implements ISchedulerServer {
                     }
                 }
             }
-            DynamicTaskManager.clearLocalTask(ownerTask);
+            DynamicTaskManager.clearLocalTask(localTasks);
         } catch (Exception e) {
             log.error("checkLocalTask failed", e);
         }

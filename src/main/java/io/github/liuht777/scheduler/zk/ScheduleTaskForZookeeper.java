@@ -109,14 +109,11 @@ public class ScheduleTaskForZookeeper implements IScheduleTask {
             if (this.client.checkExists().forPath(zkPath) == null) {
                 this.client.create().withMode(CreateMode.PERSISTENT).forPath(zkPath);
             }
-            byte[] data = this.client.getData().forPath(zkPath);
-            if (null == data || data.length == 0) {
-                if (StringUtils.isBlank(task.getType())) {
-                    task.setType(DefaultConstants.TYPE_TAROCO_TASK);
-                }
-                String json = JsonUtil.object2Json(task);
-                this.client.setData().forPath(zkPath, json.getBytes());
+            if (StringUtils.isBlank(task.getType())) {
+                task.setType(DefaultConstants.TYPE_TAROCO_TASK);
             }
+            String json = JsonUtil.object2Json(task);
+            this.client.setData().forPath(zkPath, json.getBytes());
         } catch (Exception e) {
             log.error("addTask failed:", e);
         }
@@ -129,15 +126,8 @@ public class ScheduleTaskForZookeeper implements IScheduleTask {
         try {
             if (this.client.checkExists().forPath(zkPath) != null) {
                 byte[] data = this.client.getData().forPath(zkPath);
-                Task tmpTask;
-                if (null != data) {
-                    String json = new String(data);
-                    tmpTask = JsonUtil.json2Object(json, Task.class);
-                    assert tmpTask != null;
-                    tmpTask.valueOf(tmpTask);
-                } else {
-                    tmpTask = new Task();
-                }
+                Task tmpTask = JsonUtil.json2Object(new String(data), Task.class);
+                assert tmpTask != null;
                 tmpTask.valueOf(task);
                 String json = JsonUtil.object2Json(tmpTask);
                 this.client.setData().forPath(zkPath, json.getBytes());
@@ -171,7 +161,7 @@ public class ScheduleTaskForZookeeper implements IScheduleTask {
                 List<String> childes = this.client.getChildren().forPath(zkPath);
                 for (String child : childes) {
                     byte[] data = this.client.getData().forPath(zkPath + "/" + child);
-                    Task task = null;
+                    Task task;
                     if (null != data) {
                         String json = new String(data);
                         task = JsonUtil.json2Object(json, Task.class);

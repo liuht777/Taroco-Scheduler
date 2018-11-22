@@ -74,7 +74,9 @@ public class ZkClient {
         final String rootPath = this.schedulerProperties.getZk().getRootPath();
         try {
             if (client.checkExists().forPath(rootPath) == null) {
-                client.create().withMode(CreateMode.PERSISTENT).forPath(rootPath, Version.getVersion().getBytes());
+                client.create()
+                        .creatingParentContainersIfNeeded()
+                        .withMode(CreateMode.PERSISTENT).forPath(rootPath, Version.getVersion().getBytes());
             } else {
                 //先校验父亲节点，本身是否已经是schedule的目录
                 byte[] value = this.client.getData().forPath(rootPath);
