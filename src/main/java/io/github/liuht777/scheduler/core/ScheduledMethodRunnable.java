@@ -22,23 +22,19 @@ public class ScheduledMethodRunnable implements Runnable {
 
 	private final String extKeySuffix;
 
-	private final boolean onlyOne;
 
-
-	public ScheduledMethodRunnable(Object target, Method method, String params, String extKeySuffix, boolean onlyOne) {
+	public ScheduledMethodRunnable(Object target, Method method, String params, String extKeySuffix) {
 		this.target = target;
 		this.method = method;
 		this.params = params;
 		this.extKeySuffix = extKeySuffix;
-		this.onlyOne = onlyOne;
 	}
 
-	public ScheduledMethodRunnable(Object target, String methodName, String params, String extKeySuffix, boolean onlyOne) throws NoSuchMethodException {
+	public ScheduledMethodRunnable(Object target, String methodName, String params, String extKeySuffix) throws NoSuchMethodException {
 		this.target = target;
 		this.method = target.getClass().getMethod(methodName);
 		this.params = params;
 		this.extKeySuffix = extKeySuffix;
-		this.onlyOne = onlyOne;
 	}
 
 

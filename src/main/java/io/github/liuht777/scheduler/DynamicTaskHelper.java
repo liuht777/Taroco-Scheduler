@@ -45,9 +45,6 @@ public class DynamicTaskHelper {
             Assert.notNull(task.getTargetBean(), "targetBean can not be null.");
             Assert.notNull(task.getTargetMethod(), "targetMethod can not be null.");
 			DynamicTaskHelper.getSchedulerTaskManager().getScheduleTask().delTask(task);
-			// 删除任务后出发本地任务检查
-            DynamicTaskHelper.getSchedulerTaskManager().getSchedulerServer().triggerTaskModified(
-                    DynamicTaskHelper.getSchedulerTaskManager().getTaskTrigger(), task.stringKey());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 		}
