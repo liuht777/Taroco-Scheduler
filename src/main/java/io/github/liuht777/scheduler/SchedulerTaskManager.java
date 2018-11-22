@@ -111,12 +111,12 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
      * 在Zk状态正常后回调数据初始化
      */
     public void initialData() {
+        this.scheduleTask = new ScheduleTask(this.zkClient.getClient(), this.pathTask);
+        this.schedulerServer = new SchedulerServer(this.zkClient, this.pathServer, this.pathTask);
         // 监听配置
         this.initPathAndWatchTask(this.pathServer);
         this.initPathAndWatchTask(this.pathTask);
         this.initPathAndWatchTaskTrigger(this.taskTrigger);
-        this.scheduleTask = new ScheduleTask(this.zkClient.getClient(), this.pathTask);
-        this.schedulerServer = new SchedulerServer(this.zkClient, this.pathServer, this.pathTask);
         // 注册当前server
         this.schedulerServer.registerScheduleServer(this.currenScheduleServer);
     }

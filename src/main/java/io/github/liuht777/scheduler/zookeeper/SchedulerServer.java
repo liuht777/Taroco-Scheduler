@@ -133,12 +133,8 @@ public class SchedulerServer implements ISchedulerServer {
                                         .forPath(taskPath + "/" + serverId);
                             } else {
                                 hasAssignSuccess = true;
-                                continue;
                             }
                         }
-                        // 不在taskServerList当中, 直接删除
-                        this.zkClient.getClient().delete().deletingChildrenIfNeeded()
-                                .forPath(taskPath + "/" + serverId);
                     }
                     if (!hasAssignSuccess) {
                         assignServer2Task(taskServerList, taskPath, taskTrigger, taskName);
@@ -158,9 +154,9 @@ public class SchedulerServer implements ISchedulerServer {
      * @param taskPath       任务path
      * @param taskTrigger    任务trigger
      * @param taskName       任务名称
-     * @throws Exception 异常信息
      */
-    private void assignServer2Task(List<String> taskServerList, String taskPath, String taskTrigger, String taskName) throws Exception {
+    private synchronized void assignServer2Task(List<String> taskServerList, String taskPath, String taskTrigger, String
+            taskName) {
         if (pos.intValue() > taskServerList.size() - 1) {
             pos.set(0);
         }
@@ -170,8 +166,14 @@ public class SchedulerServer implements ISchedulerServer {
         try {
             if (this.zkClient.getClient().checkExists().forPath(taskPath) != null) {
                 final String runningInfo = "0:" + System.currentTimeMillis();
-                this.zkClient.getClient().create()
-                        .withMode(CreateMode.PERSISTENT).forPath(taskPath + "/" + serverId, runningInfo.getBytes());
+                final String path = taskPath + "/" + serverId;
+                final Stat stat = this.zkClient.getClient().checkExists().forPath(path);
+                if (stat == null) {
+                    this.zkClient.getClient()
+                            .create()
+                            .withMode(CreateMode.EPHEMERAL)
+                            .forPath(path, runningInfo.getBytes());
+                }
                 triggerTaskModified(taskTrigger, taskName);
                 log.info("成功分配任务 [" + taskPath + "]" + " 给 server [" + serverId + "]");
             }
