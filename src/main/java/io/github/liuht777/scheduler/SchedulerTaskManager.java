@@ -108,73 +108,36 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
         this.scheduleTask = new ScheduleTask(this.zkClient.getClient(), this.pathTask);
         this.schedulerServer = new SchedulerServer(this.zkClient, this.pathServer, this.pathTask);
         // 监听配置
-        this.initPathAndWatchServer(this.pathServer);
-        this.initPathAndWatchTask(this.pathTask);
+        this.initPathAndWatch(this.pathServer);
+        this.initPathAndWatch(this.pathTask);
         // 注册当前server
         this.schedulerServer.registerScheduleServer(this.currenScheduleServer);
-    }
-
-    /**
-     * 初始化并且监听task节点
-     * 触发检查本地任务
-     */
-    private void initPathAndWatchTask(String pathTask) {
-        try {
-            if (this.zkClient.getClient().checkExists().forPath(pathTask) == null) {
-                this.zkClient.getClient().create()
-                        .creatingParentsIfNeeded()
-                        .withMode(CreateMode.PERSISTENT).forPath(pathTask);
-            }
-            // 监听子节点变化情况
-            final PathChildrenCache watcher = new PathChildrenCache(this.zkClient.getClient(), pathTask, true);
-            watcher.start(PathChildrenCache.StartMode.POST_INITIALIZED_EVENT);
-            watcher.getListenable().addListener(
-                    (client, event) -> {
-                        switch (event.getType()) {
-                            case CHILD_ADDED:
-                                log.info("监听到task节点变化: 新增task=: {}", event.getData().getPath());
-                                assignScheduleTask();
-                                checkLocalTask();
-                                break;
-                            case CHILD_REMOVED:
-                                log.info("监听到task节点变化: 删除task=: {}", event.getData().getPath());
-                                assignScheduleTask();
-                                checkLocalTask();
-                                break;
-                            default:
-                                break;
-                        }
-                    }
-            );
-        } catch (Exception e) {
-            log.error("initPathAndWatchTask failed", e);
-        }
     }
 
     /**
      * 初始化并且监听server节点
      * 触发重新分配任务
      */
-    private void initPathAndWatchServer(String pathServer) {
+    private void initPathAndWatch(String path) {
         try {
-            if (this.zkClient.getClient().checkExists().forPath(pathServer) == null) {
+            if (this.zkClient.getClient().checkExists().forPath(path) == null) {
                 this.zkClient.getClient().create()
                         .creatingParentsIfNeeded()
-                        .withMode(CreateMode.PERSISTENT).forPath(pathServer);
+                        .withMode(CreateMode.PERSISTENT).forPath(path);
             }
             // 监听子节点变化情况
-            final PathChildrenCache watcher = new PathChildrenCache(this.zkClient.getClient(), pathServer, true);
+            final PathChildrenCache watcher = new PathChildrenCache(this.zkClient.getClient(), path, true);
             watcher.start(PathChildrenCache.StartMode.POST_INITIALIZED_EVENT);
             watcher.getListenable().addListener(
                     (client, event) -> {
                         switch (event.getType()) {
                             case CHILD_ADDED:
-                                log.info("监听到server节点变化: 新增server=: {}", event.getData().getPath());
+                                log.info("监听到节点变化: 新增path=: {}", event.getData().getPath());
                                 assignScheduleTask();
                                 checkLocalTask();
                                 break;
                             case CHILD_REMOVED:
-                                log.info("监听到server节点变化: 删除server=: {}", event.getData().getPath());
+                                log.info("监听到节点变化: 删除path=: {}", event.getData().getPath());
                                 assignScheduleTask();
                                 checkLocalTask();
                                 break;

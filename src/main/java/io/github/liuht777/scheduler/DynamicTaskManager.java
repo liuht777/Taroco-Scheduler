@@ -38,11 +38,12 @@ public class DynamicTaskManager {
     private static final Map<String, Task> TASKS = new ConcurrentHashMap<>();
 
     /**
-     * 启动定时任务
+     * 添加并且启动定时任务
+     * 需要添加同步锁
      *
      * @param task  定时任务
      */
-    public static void scheduleTask(Task task) {
+    public synchronized static void scheduleTask(Task task) {
         log.info("开始启动定时任务: " + task.stringKey());
         boolean newTask = true;
         if (SCHEDULE_FUTURES.containsKey(task.stringKey())) {
@@ -55,7 +56,7 @@ public class DynamicTaskManager {
             TASKS.put(task.stringKey(), task);
             scheduleTask(task.getTargetBean(), task.getTargetMethod(),
                     task.getCronExpression(), task.getStartTime(), task.getPeriod(),
-                    task.getParams(), task.getExtKeySuffix(), false);
+                    task.getParams(), task.getExtKeySuffix());
             log.info("成功添加动态任务: " + task.stringKey());
         }
     }
@@ -93,14 +94,14 @@ public class DynamicTaskManager {
      * @param period         定时进行，立即开始
      * @param params         给方法传递的参数
      * @param extKeySuffix   任务后缀名
-     * @param onlyOne        备用字段
      */
-    public static void scheduleTask(String targetBean, String targetMethod, String cronExpression, Date startTime, long period, String params, String extKeySuffix, boolean onlyOne) {
+    private static void scheduleTask(String targetBean, String targetMethod, String cronExpression, Date startTime, long
+            period, String params, String extKeySuffix) {
         String scheduleKey = ScheduleUtil.buildScheduleKey(targetBean, targetMethod, extKeySuffix);
         try {
             if (!SCHEDULE_FUTURES.containsKey(scheduleKey)) {
                 ScheduledFuture<?> scheduledFuture = null;
-                ScheduledMethodRunnable scheduledMethodRunnable = buildScheduledRunnable(targetBean, targetMethod, params, extKeySuffix, onlyOne);
+                ScheduledMethodRunnable scheduledMethodRunnable = buildScheduledRunnable(targetBean, targetMethod, params, extKeySuffix);
                 if (scheduledMethodRunnable != null) {
                     if (StringUtils.isNotEmpty(cronExpression)) {
                         Trigger trigger = new CronTrigger(cronExpression);
@@ -133,12 +134,12 @@ public class DynamicTaskManager {
     /**
      * 封装ScheduledMethodRunnable对象
      */
-    private static ScheduledMethodRunnable buildScheduledRunnable(String targetBean, String targetMethod, String params, String extKeySuffix, boolean onlyOne) {
+    private static ScheduledMethodRunnable buildScheduledRunnable(String targetBean, String targetMethod, String params, String extKeySuffix) {
         Object bean;
         ScheduledMethodRunnable scheduledMethodRunnable = null;
         try {
             bean = SchedulerTaskManager.getApplicationcontext().getBean(targetBean);
-            scheduledMethodRunnable = buildScheduledRunnable(bean, targetMethod, params, extKeySuffix, onlyOne);
+            scheduledMethodRunnable = buildScheduledRunnable(bean, targetMethod, params, extKeySuffix);
         } catch (Exception e) {
             String name = ScheduleUtil.buildScheduleKey(targetBean, targetMethod, extKeySuffix);
             try {
@@ -155,7 +156,7 @@ public class DynamicTaskManager {
     /**
      * 封装ScheduledMethodRunnable对象
      */
-    private static ScheduledMethodRunnable buildScheduledRunnable(Object bean, String targetMethod, String params, String extKeySuffix, boolean onlyOne) throws Exception {
+    private static ScheduledMethodRunnable buildScheduledRunnable(Object bean, String targetMethod, String params, String extKeySuffix) throws Exception {
 
         Assert.notNull(bean, "target object must not be null");
         Assert.hasLength(targetMethod, "Method name must not be empty");
@@ -174,7 +175,7 @@ public class DynamicTaskManager {
             method = ReflectionUtils.findMethod(clazz, targetMethod);
         }
         Assert.notNull(method, "can not find method named " + targetMethod);
-        scheduledMethodRunnable = new ScheduledMethodRunnable(bean, method, params, extKeySuffix, onlyOne);
+        scheduledMethodRunnable = new ScheduledMethodRunnable(bean, method, params, extKeySuffix);
         return scheduledMethodRunnable;
     }
 }
