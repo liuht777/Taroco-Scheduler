@@ -1,4 +1,4 @@
-package io.github.liuht777.scheduler.zk;
+package io.github.liuht777.scheduler.zookeeper;
 
 import io.github.liuht777.scheduler.constant.DefaultConstants;
 import io.github.liuht777.scheduler.core.IScheduleTask;
@@ -20,11 +20,11 @@ import static io.github.liuht777.scheduler.constant.DefaultConstants.STATUS_ERRO
  * @author liuht
  */
 @Slf4j
-public class ScheduleTaskForZookeeper implements IScheduleTask {
+public class ScheduleTask implements IScheduleTask {
     private CuratorFramework client;
     private String pathTask;
 
-    public ScheduleTaskForZookeeper(CuratorFramework client, String pathTask) {
+    public ScheduleTask(CuratorFramework client, String pathTask) {
         this.client = client;
         this.pathTask = pathTask;
     }
@@ -50,7 +50,7 @@ public class ScheduleTaskForZookeeper implements IScheduleTask {
                 isRunning = false;
             }
         } catch (Exception e) {
-            log.error("zk error", e);
+            log.error("zookeeper error", e);
         }
         return isRunning;
     }
@@ -85,7 +85,7 @@ public class ScheduleTaskForZookeeper implements IScheduleTask {
                 this.client.setData().forPath(zkPath, newVal.getBytes());
             }
         } catch (Exception e) {
-            log.error("zk error", e);
+            log.error("zookeeper error", e);
         }
         return true;
     }
@@ -96,7 +96,7 @@ public class ScheduleTaskForZookeeper implements IScheduleTask {
         try {
             return this.client.checkExists().forPath(zkPath) != null;
         } catch (Exception e) {
-            log.error("zk error", e);
+            log.error("zookeeper error", e);
         }
         return false;
     }

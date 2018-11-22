@@ -1,4 +1,4 @@
-package io.github.liuht777.scheduler.zk;
+package io.github.liuht777.scheduler.zookeeper;
 
 import io.github.liuht777.scheduler.config.TarocoSchedulerProperties;
 import io.github.liuht777.scheduler.core.Version;

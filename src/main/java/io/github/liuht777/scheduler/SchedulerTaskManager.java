@@ -7,9 +7,9 @@ import io.github.liuht777.scheduler.core.ISchedulerServer;
 import io.github.liuht777.scheduler.core.ScheduleServer;
 import io.github.liuht777.scheduler.core.ScheduledMethodRunnable;
 import io.github.liuht777.scheduler.core.Task;
-import io.github.liuht777.scheduler.zk.ScheduleTaskForZookeeper;
-import io.github.liuht777.scheduler.zk.SchedulerServerForZookeeper;
-import io.github.liuht777.scheduler.zk.ZkClient;
+import io.github.liuht777.scheduler.zookeeper.ScheduleTask;
+import io.github.liuht777.scheduler.zookeeper.SchedulerServer;
+import io.github.liuht777.scheduler.zookeeper.ZkClient;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.curator.framework.recipes.cache.PathChildrenCache;
@@ -56,7 +56,7 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
      */
     private TarocoSchedulerProperties schedulerProperties;
     /**
-     * zk 客户端
+     * zookeeper 客户端
      */
     private ZkClient zkClient;
     /**
@@ -115,8 +115,8 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
         this.initPathAndWatchTask(this.pathServer);
         this.initPathAndWatchTask(this.pathTask);
         this.initPathAndWatchTaskTrigger(this.taskTrigger);
-        this.scheduleTask = new ScheduleTaskForZookeeper(this.zkClient.getClient(), this.pathTask);
-        this.schedulerServer = new SchedulerServerForZookeeper(this.zkClient, this.pathServer, this.pathTask);
+        this.scheduleTask = new ScheduleTask(this.zkClient.getClient(), this.pathTask);
+        this.schedulerServer = new SchedulerServer(this.zkClient, this.pathServer, this.pathTask);
         // 注册调度管理器
         this.schedulerServer.registerScheduleServer(this.currenScheduleServer);
     }

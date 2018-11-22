@@ -1,4 +1,4 @@
-package io.github.liuht777.scheduler.zk;
+package io.github.liuht777.scheduler.zookeeper;
 
 import io.github.liuht777.scheduler.DynamicTaskManager;
 import io.github.liuht777.scheduler.constant.DefaultConstants;
@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @date 2017/10/21 14:27
  */
 @Slf4j
-public class SchedulerServerForZookeeper implements ISchedulerServer {
+public class SchedulerServer implements ISchedulerServer {
 
     private AtomicInteger pos = new AtomicInteger(0);
     private String pathServer;
@@ -36,7 +36,7 @@ public class SchedulerServerForZookeeper implements ISchedulerServer {
     private long zkBaseTime = 0;
     private long loclaBaseTime = 0;
 
-    public SchedulerServerForZookeeper(ZkClient zkClient, String pathServer, String pathTask) {
+    public SchedulerServer(ZkClient zkClient, String pathServer, String pathTask) {
         this.zkClient = zkClient;
         this.pathTask = pathTask;
         this.pathServer = pathServer;

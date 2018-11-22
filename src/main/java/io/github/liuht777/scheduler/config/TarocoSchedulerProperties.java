@@ -26,7 +26,7 @@ public class TarocoSchedulerProperties {
     private int poolSize = 10;
 
     /**
-     * zk properties
+     * zookeeper properties
      */
     private Zk zk;
 
