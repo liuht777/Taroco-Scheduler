@@ -93,6 +93,7 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
                 case RECONNECTED:
                     // 挂起或者丢失连接后重新连接
                     log.info("reconnected with zookeeper");
+                    this.currenScheduleServer.setRegister(false);
                     initialData();
                     break;
                 default:
