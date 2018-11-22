@@ -27,7 +27,6 @@ import java.util.concurrent.ScheduledFuture;
 
 import static io.github.liuht777.scheduler.constant.DefaultConstants.NODE_SERVER;
 import static io.github.liuht777.scheduler.constant.DefaultConstants.NODE_TASK;
-import static io.github.liuht777.scheduler.constant.DefaultConstants.NODE_TASK_TRIGGER;
 
 /**
  * 调度器核心管理
@@ -47,10 +46,6 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
      * task 根节点
      */
     private String pathTask;
-    /**
-     * task变更触发节点, 由leader来维护
-     */
-    private String taskTrigger;
     /**
      * 配置properties
      */
@@ -89,7 +84,6 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
         final String rootPath = this.schedulerProperties.getZk().getRootPath();
         this.pathTask = rootPath + "/" + NODE_TASK;
         this.pathServer = rootPath + "/" + NODE_SERVER;
-        this.taskTrigger = rootPath + "/" + NODE_TASK_TRIGGER;
         this.setPoolSize(this.schedulerProperties.getPoolSize());
         // 初始化 zookeeper 连接
         this.zkClient = new ZkClient(this.schedulerProperties);
@@ -114,71 +108,36 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
         this.scheduleTask = new ScheduleTask(this.zkClient.getClient(), this.pathTask);
         this.schedulerServer = new SchedulerServer(this.zkClient, this.pathServer, this.pathTask);
         // 监听配置
-        this.initPathAndWatchTask(this.pathServer);
+        this.initPathAndWatchServer(this.pathServer);
         this.initPathAndWatchTask(this.pathTask);
-        this.initPathAndWatchTaskTrigger(this.taskTrigger);
         // 注册当前server
         this.schedulerServer.registerScheduleServer(this.currenScheduleServer);
     }
 
     /**
-     * 初始化监听taskTrigger节点 只检查本地任务
-     * 用于在leader重新分配任务之后
+     * 初始化并且监听task节点
+     * 触发检查本地任务
      */
-    private void initPathAndWatchTaskTrigger(String path) {
+    private void initPathAndWatchTask(String pathTask) {
         try {
-            if (this.zkClient.getClient().checkExists().forPath(path) == null) {
+            if (this.zkClient.getClient().checkExists().forPath(pathTask) == null) {
                 this.zkClient.getClient().create()
                         .creatingParentsIfNeeded()
-                        .withMode(CreateMode.PERSISTENT).forPath(path);
+                        .withMode(CreateMode.PERSISTENT).forPath(pathTask);
             }
             // 监听子节点变化情况
-            final PathChildrenCache watcher = new PathChildrenCache(this.zkClient.getClient(), path, true);
+            final PathChildrenCache watcher = new PathChildrenCache(this.zkClient.getClient(), pathTask, true);
             watcher.start(PathChildrenCache.StartMode.POST_INITIALIZED_EVENT);
             watcher.getListenable().addListener(
                     (client, event) -> {
                         switch (event.getType()) {
                             case CHILD_ADDED:
-                                log.info("监听到taskTrigger节点变化: 新增, path=: {}", event.getData().getPath());
+                                log.info("监听到task节点变化: 新增task=: {}", event.getData().getPath());
                                 checkLocalTask();
                                 break;
                             case CHILD_REMOVED:
-                                log.info("监听到taskTrigger节点变化: 删除, path=: {}", event.getData().getPath());
+                                log.info("监听到task节点变化: 删除task=: {}", event.getData().getPath());
                                 checkLocalTask();
-                                break;
-                            default:
-                                break;
-                        }
-                    }
-            );
-        } catch (Exception e) {
-            log.error("initPathAndWatchTaskTrigger failed", e);
-        }
-    }
-
-    /**
-     * 初始化并且监听节点 server 和 task 变化都需要重新分配任务
-     */
-    private void initPathAndWatchTask(String path) {
-        try {
-            if (this.zkClient.getClient().checkExists().forPath(path) == null) {
-                this.zkClient.getClient().create()
-                        .creatingParentsIfNeeded()
-                        .withMode(CreateMode.PERSISTENT).forPath(path);
-            }
-            // 监听子节点变化情况
-            final PathChildrenCache watcher = new PathChildrenCache(this.zkClient.getClient(), path, true);
-            watcher.start(PathChildrenCache.StartMode.POST_INITIALIZED_EVENT);
-            watcher.getListenable().addListener(
-                    (client, event) -> {
-                        switch (event.getType()) {
-                            case CHILD_ADDED:
-                                log.info("监听到server或task节点变化: 新增, path=: {}", event.getData().getPath());
-                                assignScheduleTask(taskTrigger);
-                                break;
-                            case CHILD_REMOVED:
-                                log.info("监听到server或task节点变化: 删除, path=: {}", event.getData().getPath());
-                                assignScheduleTask(taskTrigger);
                                 break;
                             default:
                                 break;
@@ -191,15 +150,44 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
     }
 
     /**
-     * 根据当前调度服务器的信息，重新计算分配所有的调度任务
-     * 任务的分配是需要加锁，避免数据分配错误。为了避免数据锁带来的负面作用，通过版本号来达到锁的目的
-     * <p>
-     * 1、获取任务状态的版本号 2、获取所有的服务器注册信息和任务队列信息 3、清除已经超过心跳周期的服务器注册信息 3、重新计算任务分配
-     * 4、更新任务状态的版本号【乐观锁】 5、根系任务队列的分配信息
-     *
-     * @param taskTrigger 任务变更触发节点
+     * 初始化并且监听server节点
+     * 触发重新分配任务
      */
-    public void assignScheduleTask(String taskTrigger) {
+    private void initPathAndWatchServer(String pathServer) {
+        try {
+            if (this.zkClient.getClient().checkExists().forPath(pathServer) == null) {
+                this.zkClient.getClient().create()
+                        .creatingParentsIfNeeded()
+                        .withMode(CreateMode.PERSISTENT).forPath(pathServer);
+            }
+            // 监听子节点变化情况
+            final PathChildrenCache watcher = new PathChildrenCache(this.zkClient.getClient(), pathServer, true);
+            watcher.start(PathChildrenCache.StartMode.POST_INITIALIZED_EVENT);
+            watcher.getListenable().addListener(
+                    (client, event) -> {
+                        switch (event.getType()) {
+                            case CHILD_ADDED:
+                                log.info("监听到server节点变化: 新增server=: {}", event.getData().getPath());
+                                assignScheduleTask();
+                                break;
+                            case CHILD_REMOVED:
+                                log.info("监听到server节点变化: 删除server=: {}", event.getData().getPath());
+                                assignScheduleTask();
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+            );
+        } catch (Exception e) {
+            log.error("initPathAndWatchTask failed", e);
+        }
+    }
+
+    /**
+     * 根据当前调度服务器的信息，重新计算分配所有的调度任务 任务的分配是需要加锁，避免数据分配错误。
+     */
+    public void assignScheduleTask() {
         List<String> serverList = schedulerServer.loadScheduleServerNames();
         //黑名单
         for (String ip : schedulerProperties.getIpBlackList()) {
@@ -208,8 +196,8 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
                 serverList.remove(index);
             }
         }
-        // 设置初始化成功标准，避免在leader转换的时候，新增的线程组初始化失败
-        schedulerServer.assignTask(this.currenScheduleServer.getUuid(), serverList, taskTrigger);
+        // 执行任务分配
+        schedulerServer.assignTask(this.currenScheduleServer.getUuid(), serverList);
     }
 
     /**
@@ -440,17 +428,5 @@ public class SchedulerTaskManager extends ThreadPoolTaskScheduler implements App
                 e.printStackTrace();
             }
         }
-    }
-
-    public String getPathServer() {
-        return pathServer;
-    }
-
-    public String getPathTask() {
-        return pathTask;
-    }
-
-    public String getTaskTrigger() {
-        return taskTrigger;
     }
 }

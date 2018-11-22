@@ -103,6 +103,10 @@ public class ScheduleTask implements IScheduleTask {
 
     @Override
     public void addTask(Task task) {
+        if (isExistsTask(task)) {
+            log.warn("任务: {}, 已经存在", task.stringKey());
+            return;
+        }
         try {
             String zkPath = this.pathTask;
             zkPath = zkPath + "/" + task.stringKey();

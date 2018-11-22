@@ -14,7 +14,6 @@ import org.springframework.util.CollectionUtils;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -99,14 +98,14 @@ public class SchedulerServer implements ISchedulerServer {
     }
 
     @Override
-    public void assignTask(String currentUuid, List<String> taskServerList, String taskTrigger) {
+    public void assignTask(String currentUuid, List<String> taskServerList) {
         log.info("当前server:[" + currentUuid + "]: 开始重新分配任务......");
         if (!this.isLeader(currentUuid, taskServerList)) {
             log.info("当前server:[" + currentUuid + "]: 不是负责任务分配的Leader,直接返回");
             return;
         }
         if (CollectionUtils.isEmpty(taskServerList)) {
-            //在服务器动态调整的时候，可能出现服务器列表为空的清空
+            //在服务器动态调整的时候，可能出现服务器列表为空的情况
             log.info("服务器列表为空: 停止分配任务, 等待服务器上线...");
             return;
         }
@@ -122,7 +121,7 @@ public class SchedulerServer implements ISchedulerServer {
                 List<String> taskServerIds = this.zkClient.getClient().getChildren().forPath(taskPath);
                 if (CollectionUtils.isEmpty(taskServerIds)) {
                     // 没有找到目标server信息, 执行分配任务给server节点
-                    assignServer2Task(taskServerList, taskPath, taskTrigger, taskName);
+                    assignServer2Task(taskServerList, taskPath);
                 } else {
                     boolean hasAssignSuccess = false;
                     for (String serverId : taskServerIds) {
@@ -137,7 +136,7 @@ public class SchedulerServer implements ISchedulerServer {
                         }
                     }
                     if (!hasAssignSuccess) {
-                        assignServer2Task(taskServerList, taskPath, taskTrigger, taskName);
+                        assignServer2Task(taskServerList, taskPath);
                     }
                 }
             }
@@ -147,16 +146,13 @@ public class SchedulerServer implements ISchedulerServer {
     }
 
     /**
-     * 重新分配任务给server 重新分配成功后,需要触发taskTrigger
-     * 解决多server情况下,非leader节点不能动态检查本地任务
+     * 重新分配任务给server 采用轮询分配的方式
+     * 分配任务操作是同步的
      *
      * @param taskServerList 待分配server列表
      * @param taskPath       任务path
-     * @param taskTrigger    任务trigger
-     * @param taskName       任务名称
      */
-    private synchronized void assignServer2Task(List<String> taskServerList, String taskPath, String taskTrigger, String
-            taskName) {
+    private synchronized void assignServer2Task(List<String> taskServerList, String taskPath) {
         if (pos.intValue() > taskServerList.size() - 1) {
             pos.set(0);
         }
@@ -174,7 +170,6 @@ public class SchedulerServer implements ISchedulerServer {
                             .withMode(CreateMode.EPHEMERAL)
                             .forPath(path, runningInfo.getBytes());
                 }
-                triggerTaskModified(taskTrigger, taskName);
                 log.info("成功分配任务 [" + taskPath + "]" + " 给 server [" + serverId + "]");
             }
         } catch (Exception e) {
@@ -183,40 +178,28 @@ public class SchedulerServer implements ISchedulerServer {
     }
 
     @Override
-    public void triggerTaskModified(String taskTrigger, String taskName) throws Exception {
-        if (this.zkClient.getClient().checkExists().forPath(taskTrigger) != null) {
-            List<String> children = this.zkClient.getClient().getChildren().forPath(taskTrigger);
-            if (!CollectionUtils.isEmpty(children) && children.size() > 100) {
-                // 未防止taskTrigger下内容过多, 当超过100条时, 清空taskTrigger
-                this.zkClient.getClient().delete().deletingChildrenIfNeeded()
-                        .forPath(taskTrigger);
-            }
-            this.zkClient.getClient().create().withMode(CreateMode.PERSISTENT_SEQUENTIAL)
-                    .forPath(taskTrigger + "/" + taskName);
-        }
-    }
-
-    @Override
     public void checkLocalTask(String currentUuid) {
         try {
             String zkPath = this.pathTask;
-            List<String> children = this.zkClient.getClient().getChildren().forPath(zkPath);
+            List<String> taskNames = this.zkClient.getClient().getChildren().forPath(zkPath);
+            if (CollectionUtils.isEmpty(taskNames)) {
+                log.info("当前server:[" + currentUuid + "]: 检查本地任务结束, 任务列表为空");
+                return;
+            }
             List<String> localTasks = new ArrayList<>();
-            if (null != children && children.size() > 0) {
-                for (String taskName : children) {
-                    if (isOwner(taskName, currentUuid)) {
-                        String taskPath = zkPath + "/" + taskName;
-                        byte[] data = this.zkClient.getClient().getData().forPath(taskPath);
-                        if (null != data) {
-                            String json = new String(data);
-                            Task td = JsonUtil.json2Object(json, Task.class);
-                            Task task = new Task();
-                            task.valueOf(td);
-                            localTasks.add(taskName);
-                            if (DefaultConstants.TYPE_TAROCO_TASK.equals(task.getType())) {
-                                // 动态任务才使用 DynamicTaskManager启动
-                                DynamicTaskManager.scheduleTask(task, new Date(getSystemTime()));
-                            }
+            for (String taskName : taskNames) {
+                if (isOwner(taskName, currentUuid)) {
+                    String taskPath = zkPath + "/" + taskName;
+                    byte[] data = this.zkClient.getClient().getData().forPath(taskPath);
+                    if (null != data) {
+                        String json = new String(data);
+                        Task td = JsonUtil.json2Object(json, Task.class);
+                        Task task = new Task();
+                        task.valueOf(td);
+                        localTasks.add(taskName);
+                        if (DefaultConstants.TYPE_TAROCO_TASK.equals(task.getType())) {
+                            // 动态任务才使用 DynamicTaskManager启动
+                            DynamicTaskManager.scheduleTask(task);
                         }
                     }
                 }

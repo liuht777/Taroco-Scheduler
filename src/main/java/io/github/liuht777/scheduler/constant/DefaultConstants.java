@@ -14,11 +14,6 @@ public interface DefaultConstants {
     String NODE_TASK = "task";
 
     /**
-     * taskTrigger节点名称
-     */
-    String NODE_TASK_TRIGGER = "taskTrigger";
-
-    /**
      * server 节点名称
      */
     String NODE_SERVER = "server";

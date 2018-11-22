@@ -41,9 +41,8 @@ public class DynamicTaskManager {
      * 启动定时任务
      *
      * @param task  定时任务
-     * @param currentTime 时间
      */
-    public static void scheduleTask(Task task, Date currentTime) {
+    public static void scheduleTask(Task task) {
         log.info("开始启动定时任务: " + task.stringKey());
         boolean newTask = true;
         if (SCHEDULE_FUTURES.containsKey(task.stringKey())) {

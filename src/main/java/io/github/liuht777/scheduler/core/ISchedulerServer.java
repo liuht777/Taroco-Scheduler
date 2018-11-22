@@ -32,9 +32,8 @@ public interface ISchedulerServer {
      *
      * @param currentUuid    当前服务器uuid
      * @param taskServerList 所有服务器uuid(过滤后的)
-     * @param taskTrigger    任务变更触发节点 用于在leader重新分配任务后,检查本地任务
      */
-    void assignTask(String currentUuid, List<String> taskServerList, String taskTrigger);
+    void assignTask(String currentUuid, List<String> taskServerList);
 
     /**
      * 注册服务器
@@ -58,13 +57,4 @@ public interface ISchedulerServer {
      * @return 所有服务器名称
      */
     List<String> loadScheduleServerNames();
-
-    /**
-     * 触发taskTrigger, taskTrigger下最多保留20个子节点,达到20个就删除之前的
-     *
-     * @param taskTrigger taskTrigger节点
-     * @param taskName    任务名称
-     * @throws Exception 异常信息
-     */
-    void triggerTaskModified(String taskTrigger, String taskName) throws Exception;
 }
