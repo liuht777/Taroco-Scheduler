@@ -86,7 +86,7 @@ public class SchedulerServerZk implements ISchedulerServer {
     @Override
     public void assignTask(String currentUuid, List<String> taskServerList) {
         if (CollectionUtils.isEmpty(taskServerList)) {
-            log.info("Server List 为空, 不能分配任务...");
+            log.info("当前Server List 为空, 暂不能分配任务...");
             return;
         }
         log.info("当前server:[" + currentUuid + "]: 开始重新分配任务......");
