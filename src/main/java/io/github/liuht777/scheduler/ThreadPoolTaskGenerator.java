@@ -30,7 +30,7 @@ public class ThreadPoolTaskGenerator extends ThreadPoolTaskScheduler implements 
 
     private static final long serialVersionUID = 8048640374020873814L;
 
-    private static ApplicationContext applicationcontext;
+    private ApplicationContext applicationcontext;
 
     private IScheduleTask scheduleTask;
 
@@ -42,10 +42,6 @@ public class ThreadPoolTaskGenerator extends ThreadPoolTaskScheduler implements 
         this.setPoolSize(poolsize);
         this.scheduleTask = scheduleTask;
         this.schedulerServer = schedulerServer;
-    }
-
-    public static ApplicationContext getApplicationcontext() {
-        return ThreadPoolTaskGenerator.applicationcontext;
     }
 
     /**
@@ -114,7 +110,7 @@ public class ThreadPoolTaskGenerator extends ThreadPoolTaskScheduler implements 
     @Override
     public void setApplicationContext(ApplicationContext applicationcontext)
             throws BeansException {
-        ThreadPoolTaskGenerator.applicationcontext = applicationcontext;
+        this.applicationcontext = applicationcontext;
     }
 
     @Override

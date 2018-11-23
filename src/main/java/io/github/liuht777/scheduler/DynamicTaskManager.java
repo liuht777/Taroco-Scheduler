@@ -4,6 +4,7 @@ import io.github.liuht777.scheduler.core.ScheduleServer;
 import io.github.liuht777.scheduler.core.ScheduledMethodRunnable;
 import io.github.liuht777.scheduler.core.Task;
 import io.github.liuht777.scheduler.util.ScheduleUtil;
+import io.github.liuht777.scheduler.zookeeper.ZkClient;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.aop.framework.AopProxyUtils;
@@ -142,7 +143,7 @@ public class DynamicTaskManager {
         Object bean;
         ScheduledMethodRunnable scheduledMethodRunnable = null;
         try {
-            bean = ThreadPoolTaskGenerator.getApplicationcontext().getBean(targetBean);
+            bean = ZkClient.getApplicationcontext().getBean(targetBean);
             scheduledMethodRunnable = buildScheduledRunnable(bean, targetMethod, params, extKeySuffix);
         } catch (Exception e) {
             String name = ScheduleUtil.buildScheduleKey(targetBean, targetMethod, extKeySuffix);

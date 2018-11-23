@@ -83,7 +83,7 @@ public class ZkClient implements ApplicationContextAware {
         this.iScheduleTask = iScheduleTask;
         this.taskGenerator = taskGenerator;
         this.refreshTaskExecutor = new ScheduledThreadPoolExecutor(1,
-                new ThreadFactoryBuilder().setNameFormat("server-task-timer-").build());
+                new ThreadFactoryBuilder().setNameFormat("ServerTaskCheckInterval").build());
         this.connect();
     }
 
