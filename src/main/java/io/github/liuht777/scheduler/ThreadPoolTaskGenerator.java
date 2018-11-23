@@ -64,7 +64,7 @@ public class ThreadPoolTaskGenerator extends ThreadPoolTaskScheduler implements 
                         String errorMsg = null;
                         try {
                             runnable.run();
-                            log.info("任务[" + name + "] 成功触发!");
+                            log.debug("任务[" + name + "] 成功触发!");
                         } catch (Exception e) {
                             errorMsg = e.getLocalizedMessage();
                         }
@@ -84,32 +84,40 @@ public class ThreadPoolTaskGenerator extends ThreadPoolTaskScheduler implements 
         };
     }
 
-    private Task resolveTaskName(final Runnable task) {
+    /**
+     * 根据Runnable 返回task相关信息
+     *
+     * @param runnable Runnable
+     * @return Task
+     */
+    private Task resolveTaskName(final Runnable runnable) {
         Method targetMethod;
-        Task taskDefine = new Task();
-        if (task instanceof ScheduledMethodRunnable) {
-            ScheduledMethodRunnable uncodeScheduledMethodRunnable = (ScheduledMethodRunnable) task;
-            targetMethod = uncodeScheduledMethodRunnable.getMethod();
-            taskDefine.setType(DefaultConstants.TYPE_TAROCO_TASK);
-            if (StringUtils.isNotBlank(uncodeScheduledMethodRunnable.getExtKeySuffix())) {
-                taskDefine.setExtKeySuffix(uncodeScheduledMethodRunnable.getExtKeySuffix());
+        Task task = new Task();
+        if (runnable instanceof ScheduledMethodRunnable) {
+            ScheduledMethodRunnable scheduledMethodRunnable = (ScheduledMethodRunnable) runnable;
+            targetMethod = scheduledMethodRunnable.getMethod();
+            task.setType(DefaultConstants.TYPE_TAROCO_TASK);
+            if (StringUtils.isNotBlank(scheduledMethodRunnable.getExtKeySuffix())) {
+                task.setExtKeySuffix(scheduledMethodRunnable.getExtKeySuffix());
+            }
+            if (StringUtils.isNotEmpty(scheduledMethodRunnable.getParams())) {
+                task.setParams(scheduledMethodRunnable.getParams());
             }
         } else {
-            org.springframework.scheduling.support.ScheduledMethodRunnable springScheduledMethodRunnable = (org.springframework.scheduling.support.ScheduledMethodRunnable) task;
+            org.springframework.scheduling.support.ScheduledMethodRunnable springScheduledMethodRunnable = (org.springframework.scheduling.support.ScheduledMethodRunnable) runnable;
             targetMethod = springScheduledMethodRunnable.getMethod();
-            taskDefine.setType(DefaultConstants.TYPE_SPRING_TASK);
+            task.setType(DefaultConstants.TYPE_SPRING_TASK);
         }
         String[] beanNames = applicationcontext.getBeanNamesForType(targetMethod.getDeclaringClass());
         if (StringUtils.isNotEmpty(beanNames[0])) {
-            taskDefine.setTargetBean(beanNames[0]);
-            taskDefine.setTargetMethod(targetMethod.getName());
+            task.setTargetBean(beanNames[0]);
+            task.setTargetMethod(targetMethod.getName());
         }
-        return taskDefine;
+        return task;
     }
 
     @Override
-    public void setApplicationContext(ApplicationContext applicationcontext)
-            throws BeansException {
+    public void setApplicationContext(ApplicationContext applicationcontext) throws BeansException {
         this.applicationcontext = applicationcontext;
     }
 
