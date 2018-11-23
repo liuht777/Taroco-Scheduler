@@ -39,7 +39,7 @@ public class Task {
     /**
      * 周期（毫秒）
      */
-    private long period;
+    private Long period;
 
     /**
      * 参数
