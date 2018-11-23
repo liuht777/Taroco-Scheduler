@@ -1,5 +1,6 @@
 package io.github.liuht777.scheduler;
 
+import io.github.liuht777.scheduler.core.ScheduleServer;
 import io.github.liuht777.scheduler.core.ScheduledMethodRunnable;
 import io.github.liuht777.scheduler.core.Task;
 import io.github.liuht777.scheduler.util.ScheduleUtil;
@@ -105,24 +106,27 @@ public class DynamicTaskManager {
                 if (scheduledMethodRunnable != null) {
                     if (StringUtils.isNotEmpty(cronExpression)) {
                         Trigger trigger = new CronTrigger(cronExpression);
-                        scheduledFuture = DynamicTaskHelper.getSchedulerTaskManager().schedule(scheduledMethodRunnable, trigger);
+                        scheduledFuture = DynamicTaskHelper.getZkClient().getTaskGenerator().schedule(scheduledMethodRunnable,
+                                trigger);
                     } else if (startTime != null) {
                         if (period > 0) {
-                            scheduledFuture = DynamicTaskHelper.getSchedulerTaskManager().scheduleAtFixedRate(scheduledMethodRunnable, startTime, period);
+                            scheduledFuture = DynamicTaskHelper.getZkClient().getTaskGenerator()
+                                    .scheduleAtFixedRate(scheduledMethodRunnable, startTime, period);
                         } else {
-                            scheduledFuture = DynamicTaskHelper.getSchedulerTaskManager().schedule(scheduledMethodRunnable, startTime);
+                            scheduledFuture = DynamicTaskHelper.getZkClient().getTaskGenerator()
+                                    .schedule(scheduledMethodRunnable, startTime);
                         }
                     } else if (period > 0) {
-                        scheduledFuture = DynamicTaskHelper.getSchedulerTaskManager().scheduleAtFixedRate(scheduledMethodRunnable, period);
+                        scheduledFuture = DynamicTaskHelper.getZkClient().getTaskGenerator()
+                                .scheduleAtFixedRate(scheduledMethodRunnable, period);
                     }
                     if (null != scheduledFuture) {
                         SCHEDULE_FUTURES.put(scheduleKey, scheduledFuture);
                         log.debug("Building new schedule task, target bean " + targetBean + " target method " + targetMethod + ".");
                     }
                 } else {
-                    DynamicTaskHelper.getSchedulerTaskManager().getScheduleTask()
-                            .saveRunningInfo(scheduleKey,
-                                    DynamicTaskHelper.getSchedulerTaskManager().getCurrentScheduleServerUUid(), "bean not exists");
+                    DynamicTaskHelper.getZkClient().getiScheduleTask()
+                            .saveRunningInfo(scheduleKey, ScheduleServer.getInstance().getUuid(), "bean not exists");
                     log.debug("Bean name is not exists.");
                 }
             }
@@ -138,13 +142,13 @@ public class DynamicTaskManager {
         Object bean;
         ScheduledMethodRunnable scheduledMethodRunnable = null;
         try {
-            bean = SchedulerTaskManager.getApplicationcontext().getBean(targetBean);
+            bean = ThreadPoolTaskGenerator.getApplicationcontext().getBean(targetBean);
             scheduledMethodRunnable = buildScheduledRunnable(bean, targetMethod, params, extKeySuffix);
         } catch (Exception e) {
             String name = ScheduleUtil.buildScheduleKey(targetBean, targetMethod, extKeySuffix);
             try {
-                DynamicTaskHelper.getSchedulerTaskManager().getScheduleTask().saveRunningInfo(name,
-                        DynamicTaskHelper.getSchedulerTaskManager().getCurrentScheduleServerUUid(), "method is null");
+                DynamicTaskHelper.getZkClient().getiScheduleTask().saveRunningInfo(name,
+                        ScheduleServer.getInstance().getUuid(), "method is null");
             } catch (Exception e1) {
                 log.debug(e.getLocalizedMessage(), e);
             }

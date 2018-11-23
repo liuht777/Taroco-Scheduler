@@ -1,6 +1,8 @@
 package io.github.liuht777.scheduler;
 
+import io.github.liuht777.scheduler.core.ScheduleServer;
 import io.github.liuht777.scheduler.core.Task;
+import io.github.liuht777.scheduler.zookeeper.ZkClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.Assert;
 
@@ -17,84 +19,84 @@ import java.util.List;
  */
 @Slf4j
 public class DynamicTaskHelper {
-    private static SchedulerTaskManager schedulerTaskManager;
+    private static ZkClient zkClient;
 
-    public static SchedulerTaskManager getSchedulerTaskManager(){
-    	if(null == DynamicTaskHelper.schedulerTaskManager){
-			synchronized(DynamicTaskHelper.class) {
-				DynamicTaskHelper.schedulerTaskManager = SchedulerTaskManager.getApplicationcontext().getBean(SchedulerTaskManager.class);
-			}
-    	}
-        return DynamicTaskHelper.schedulerTaskManager;
+    public static ZkClient getZkClient() {
+        if (null == DynamicTaskHelper.zkClient) {
+            synchronized (DynamicTaskHelper.class) {
+                DynamicTaskHelper.zkClient = ZkClient.getApplicationcontext().getBean(ZkClient.class);
+            }
+        }
+        return DynamicTaskHelper.zkClient;
     }
 
     public static void addScheduleTask(Task task) {
         try {
-        	log.info("添加任务："+ task.stringKey());
+            log.info("添加任务：" + task.stringKey());
             Assert.notNull(task.getTargetBean(), "targetBean can not be null.");
             Assert.notNull(task.getTargetMethod(), "targetMethod can not be null.");
-			DynamicTaskHelper.getSchedulerTaskManager().getScheduleTask().addTask(task);
-		} catch (Exception e) {
-			log.error(e.getMessage(), e);
-		}
+            DynamicTaskHelper.getZkClient().getiScheduleTask().addTask(task);
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
+        }
     }
 
     public static void delScheduleTask(Task task) {
         try {
-			log.info("删除任务："+ task.stringKey());
+            log.info("删除任务：" + task.stringKey());
             Assert.notNull(task.getTargetBean(), "targetBean can not be null.");
             Assert.notNull(task.getTargetMethod(), "targetMethod can not be null.");
-			DynamicTaskHelper.getSchedulerTaskManager().getScheduleTask().delTask(task);
-		} catch (Exception e) {
-			log.error(e.getMessage(), e);
-		}
+            DynamicTaskHelper.getZkClient().getiScheduleTask().delTask(task);
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
+        }
     }
 
     public static void updateScheduleTask(Task task) {
         try {
-            log.info("更新任务："+ task.stringKey());
+            log.info("更新任务：" + task.stringKey());
             Assert.notNull(task.getTargetBean(), "targetBean can not be null.");
             Assert.notNull(task.getTargetMethod(), "targetMethod can not be null.");
-			DynamicTaskHelper.getSchedulerTaskManager().getScheduleTask().updateTask(task);
-		} catch (Exception e) {
-			log.error(e.getMessage(), e);
-		}
+            DynamicTaskHelper.getZkClient().getiScheduleTask().updateTask(task);
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
+        }
     }
 
     public static List<Task> queryScheduleTask() {
-    	List<Task> taskDefines = new ArrayList<Task>();
+        List<Task> taskDefines = new ArrayList<Task>();
         try {
-			List<Task> tasks = DynamicTaskHelper.getSchedulerTaskManager().getScheduleTask().selectTask();
-			taskDefines.addAll(tasks);
-		} catch (Exception e) {
-			log.error(e.getMessage(), e);
-		}
+            List<Task> tasks = DynamicTaskHelper.getZkClient().getiScheduleTask().selectTask();
+            taskDefines.addAll(tasks);
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
+        }
         return taskDefines;
     }
 
-    public static boolean isExistsTask(Task task){
+    public static boolean isExistsTask(Task task) {
         Assert.notNull(task.getTargetBean(), "targetBean can not be null.");
         Assert.notNull(task.getTargetMethod(), "targetMethod can not be null.");
-        return DynamicTaskHelper.getSchedulerTaskManager().getScheduleTask().isExistsTask(task);
+        return DynamicTaskHelper.getZkClient().getiScheduleTask().isExistsTask(task);
     }
 
     public static Task queryScheduleTask(Task task) {
         Assert.notNull(task.getTargetBean(), "targetBean can not be null.");
         Assert.notNull(task.getTargetMethod(), "targetMethod can not be null.");
-		return DynamicTaskHelper.getSchedulerTaskManager().getScheduleTask().selectTask(task);
+        return DynamicTaskHelper.getZkClient().getiScheduleTask().selectTask(task);
     }
 
 
-    public static boolean isOwner(Task task){
+    public static boolean isOwner(Task task) {
         Assert.notNull(task.getTargetBean(), "targetBean can not be null.");
         Assert.notNull(task.getTargetMethod(), "targetMethod can not be null.");
-		return DynamicTaskHelper.getSchedulerTaskManager().getSchedulerServer().isOwner(task.stringKey(),
-				DynamicTaskHelper.getSchedulerTaskManager().getCurrentScheduleServerUUid());
+        return DynamicTaskHelper.getZkClient().getiSchedulerServer().isOwner(task.stringKey(),
+                ScheduleServer.getInstance().getUuid());
     }
 
     public static boolean isRunning(Task task) {
         Assert.notNull(task.getTargetBean(), "targetBean can not be null.");
         Assert.notNull(task.getTargetMethod(), "targetMethod can not be null.");
-        return isExistsTask(task) && DynamicTaskHelper.getSchedulerTaskManager().getScheduleTask().isRunning(task.stringKey());
+        return isExistsTask(task) && DynamicTaskHelper.getZkClient().getiScheduleTask().isRunning(task.stringKey());
     }
 }

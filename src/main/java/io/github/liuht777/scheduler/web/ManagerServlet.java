@@ -261,7 +261,7 @@ public class ManagerServlet extends HttpServlet {
             response.sendRedirect(request.getSession().getServletContext().getContextPath() + "/taroco/scheduler");
         }
         try {
-            List<String> servers = DynamicTaskHelper.getSchedulerTaskManager().getSchedulerServer().loadScheduleServerNames();
+            List<String> servers = DynamicTaskHelper.getZkClient().getiSchedulerServer().loadScheduleServerNames();
             if (servers != null) {
                 response.setContentType("text/html;charset=UTF-8");
                 PrintWriter out = response.getWriter();
@@ -271,7 +271,7 @@ public class ManagerServlet extends HttpServlet {
                     sb.append("<tr class=\"info\">")
                             .append("<td>").append(i + 1).append("</td>")
                             .append("<td>").append(ser).append("</td>");
-                    if (DynamicTaskHelper.getSchedulerTaskManager().getSchedulerServer().isLeader(ser, servers)) {
+                    if (DynamicTaskHelper.getZkClient().getiSchedulerServer().isLeader(ser, servers)) {
                         sb.append("<td>").append("是").append("</td>");
                     } else {
                         sb.append("<td>").append("否").append("</td>");

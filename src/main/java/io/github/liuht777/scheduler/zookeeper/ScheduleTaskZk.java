@@ -15,18 +15,22 @@ import java.util.List;
 import static io.github.liuht777.scheduler.constant.DefaultConstants.STATUS_ERROR;
 
 /**
- * 定时任务操作实现类
+ * 定义任务task的zookeeper实现
  *
  * @author liuht
  */
 @Slf4j
-public class ScheduleTask implements IScheduleTask {
+public class ScheduleTaskZk implements IScheduleTask {
     private CuratorFramework client;
     private String pathTask;
 
-    public ScheduleTask(CuratorFramework client, String pathTask) {
-        this.client = client;
+    public ScheduleTaskZk(String pathTask) {
         this.pathTask = pathTask;
+    }
+
+    @Override
+    public void setClient(final CuratorFramework client) {
+        this.client = client;
     }
 
     @Override

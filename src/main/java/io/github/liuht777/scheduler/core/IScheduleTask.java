@@ -1,15 +1,23 @@
 package io.github.liuht777.scheduler.core;
 
+import org.apache.curator.framework.CuratorFramework;
+
 import java.util.List;
 
 
 /**
- * 定义任务基本操作
+ * 定义任务task的接口定义
  *
  * @author liuht
  * @date 2017/10/21 14:19
  */
 public interface IScheduleTask {
+
+    /**
+     * 设置 CuratorFramework
+     * @param client zk client对象
+     */
+    void setClient(CuratorFramework client);
 
     /**
      * 返回指定任务是否是执行状态

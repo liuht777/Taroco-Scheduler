@@ -1,9 +1,11 @@
 package io.github.liuht777.scheduler.core;
 
+import org.apache.curator.framework.CuratorFramework;
+
 import java.util.List;
 
 /**
- * 定义服务器基本操作
+ * server节点接口定义
  *
  * @author liuht
  * @date 2017/10/21 14:19
@@ -34,6 +36,12 @@ public interface ISchedulerServer {
      * @param taskServerList 所有服务器uuid(过滤后的)
      */
     void assignTask(String currentUuid, List<String> taskServerList);
+
+    /**
+     * 设置 CuratorFramework
+     * @param client zk client对象
+     */
+    void setClient(CuratorFramework client);
 
     /**
      * 注册服务器
