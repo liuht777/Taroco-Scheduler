@@ -60,6 +60,15 @@ public class ScheduleTaskZk implements IScheduleTask {
     }
 
     @Override
+    public void addOrUpdate(final Task task) {
+        if (isExistsTask(task)) {
+            updateTask(task);
+        } else {
+            addTask(task);
+        }
+    }
+
+    @Override
     public boolean saveRunningInfo(String name, String uuid) {
         return saveRunningInfo(name, uuid, null);
     }
@@ -107,10 +116,6 @@ public class ScheduleTaskZk implements IScheduleTask {
 
     @Override
     public void addTask(Task task) {
-        if (isExistsTask(task)) {
-            log.info("任务: {}, 已经存在", task.stringKey());
-            return;
-        }
         try {
             String zkPath = this.pathTask;
             zkPath = zkPath + "/" + task.stringKey();

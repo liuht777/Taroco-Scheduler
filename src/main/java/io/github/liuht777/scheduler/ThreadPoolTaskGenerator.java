@@ -122,18 +122,18 @@ public class ThreadPoolTaskGenerator extends ThreadPoolTaskScheduler implements 
     }
 
     @Override
-    public ScheduledFuture<?> scheduleAtFixedRate(Runnable task, long period) {
+    public ScheduledFuture<?> scheduleAtFixedRate(Runnable runnable, long period) {
         ScheduledFuture scheduledFuture = null;
         try {
-            Task taskDefine = resolveTaskName(task);
-            if (taskDefine.getType().equals(DefaultConstants.TYPE_SPRING_TASK)) {
-                super.scheduleAtFixedRate(task, period);
-                log.info(":添加本地任务[" + taskDefine.stringKey() + "]");
+            Task task = resolveTaskName(runnable);
+            if (task.getType().equals(DefaultConstants.TYPE_SPRING_TASK)) {
+                super.scheduleAtFixedRate(runnable, period);
+                log.info(":添加 Spring 本地任务[" + task.stringKey() + "]");
             } else {
-                taskDefine.setPeriod(period);
-                scheduleTask.addTask(taskDefine);
-                scheduledFuture = super.scheduleAtFixedRate(taskWrapper(task), period);
-                log.info(ScheduleServer.getInstance().getUuid() + ":自动向集群注册任务[" + taskDefine.stringKey() + "]");
+                task.setPeriod(period);
+                scheduleTask.addTask(task);
+                scheduledFuture = super.scheduleAtFixedRate(taskWrapper(runnable), period);
+                log.info("添加 Taroco 动态任务[" + task.stringKey() + "]");
             }
 
         } catch (Exception e) {
@@ -143,23 +143,23 @@ public class ThreadPoolTaskGenerator extends ThreadPoolTaskScheduler implements 
     }
 
     @Override
-    public ScheduledFuture<?> schedule(Runnable task, Trigger trigger) {
+    public ScheduledFuture<?> schedule(Runnable runnable, Trigger trigger) {
         ScheduledFuture scheduledFuture = null;
         try {
-            Task taskDefine = resolveTaskName(task);
-            if (taskDefine.getType().equals(DefaultConstants.TYPE_SPRING_TASK)) {
-                super.schedule(task, trigger);
-                log.info(":添加本地任务[" + taskDefine.stringKey() + "]");
+            Task task = resolveTaskName(runnable);
+            if (task.getType().equals(DefaultConstants.TYPE_SPRING_TASK)) {
+                super.schedule(runnable, trigger);
+                log.info(":添加 Spring 本地任务[" + task.stringKey() + "]");
             } else {
                 String cronEx = trigger.toString();
                 int index = cronEx.indexOf(":");
                 if (index >= 0) {
                     cronEx = cronEx.substring(index + 1);
-                    taskDefine.setCronExpression(cronEx.trim());
+                    task.setCronExpression(cronEx.trim());
                 }
-                scheduleTask.addTask(taskDefine);
-                scheduledFuture = super.schedule(taskWrapper(task), trigger);
-                log.info(ScheduleServer.getInstance().getUuid() + ":自动向集群注册任务[" + taskDefine.stringKey() + "]");
+                scheduleTask.addTask(task);
+                scheduledFuture = super.schedule(taskWrapper(runnable), trigger);
+                log.info("添加 Taroco 动态任务[" + task.stringKey() + "]");
             }
         } catch (Exception e) {
             log.error("update task error", e);
@@ -168,18 +168,18 @@ public class ThreadPoolTaskGenerator extends ThreadPoolTaskScheduler implements 
     }
 
     @Override
-    public ScheduledFuture<?> schedule(Runnable task, Date startTime) {
+    public ScheduledFuture<?> schedule(Runnable runnable, Date startTime) {
         ScheduledFuture scheduledFuture = null;
         try {
-            Task taskDefine = resolveTaskName(task);
-            if (taskDefine.getType().equals(DefaultConstants.TYPE_SPRING_TASK)) {
-                super.schedule(task, startTime);
-                log.info(":添加本地任务[" + taskDefine.stringKey() + "]");
+            Task task = resolveTaskName(runnable);
+            if (task.getType().equals(DefaultConstants.TYPE_SPRING_TASK)) {
+                super.schedule(runnable, startTime);
+                log.info(":添加 Spring 本地任务[" + task.stringKey() + "]");
             } else {
-                taskDefine.setStartTime(startTime);
-                scheduleTask.addTask(taskDefine);
-                scheduledFuture = super.schedule(taskWrapper(task), startTime);
-                log.info(ScheduleServer.getInstance().getUuid() + ":自动向集群注册任务[" + taskDefine.stringKey() + "]");
+                task.setStartTime(startTime);
+                scheduleTask.addTask(task);
+                scheduledFuture = super.schedule(taskWrapper(runnable), startTime);
+                log.info("添加 Taroco 动态任务[" + task.stringKey() + "]");
             }
         } catch (Exception e) {
             log.error("update task error", e);
@@ -188,19 +188,19 @@ public class ThreadPoolTaskGenerator extends ThreadPoolTaskScheduler implements 
     }
 
     @Override
-    public ScheduledFuture<?> scheduleAtFixedRate(Runnable task, Date startTime, long period) {
+    public ScheduledFuture<?> scheduleAtFixedRate(Runnable runnable, Date startTime, long period) {
         ScheduledFuture scheduledFuture = null;
         try {
-            Task taskDefine = resolveTaskName(task);
-            if (taskDefine.getType().equals(DefaultConstants.TYPE_SPRING_TASK)) {
-                super.scheduleAtFixedRate(task, startTime, period);
-                log.info(":添加本地任务[" + taskDefine.stringKey() + "]");
+            Task task = resolveTaskName(runnable);
+            if (task.getType().equals(DefaultConstants.TYPE_SPRING_TASK)) {
+                scheduledFuture = super.scheduleAtFixedRate(runnable, startTime, period);
+                log.info(":添加 Spring 本地任务[" + task.stringKey() + "]");
             } else {
-                taskDefine.setStartTime(startTime);
-                taskDefine.setPeriod(period);
-                scheduleTask.addTask(taskDefine);
-                scheduledFuture = super.scheduleAtFixedRate(taskWrapper(task), startTime, period);
-                log.info(ScheduleServer.getInstance().getUuid() + ":自动向集群注册任务[" + taskDefine.stringKey() + "]");
+                task.setStartTime(startTime);
+                task.setPeriod(period);
+                scheduleTask.addOrUpdate(task);
+                scheduledFuture = super.scheduleAtFixedRate(taskWrapper(runnable), startTime, period);
+                log.info("添加 Taroco 动态任务[" + task.stringKey() + "]");
             }
         } catch (Exception e) {
             log.error("update task error", e);
@@ -209,19 +209,19 @@ public class ThreadPoolTaskGenerator extends ThreadPoolTaskScheduler implements 
     }
 
     @Override
-    public ScheduledFuture<?> scheduleWithFixedDelay(Runnable task, Date startTime, long delay) {
+    public ScheduledFuture<?> scheduleWithFixedDelay(Runnable runnable, Date startTime, long delay) {
         ScheduledFuture scheduledFuture = null;
         try {
-            Task taskDefine = resolveTaskName(task);
-            if (taskDefine.getType().equals(DefaultConstants.TYPE_SPRING_TASK)) {
-                super.scheduleWithFixedDelay(task, startTime, delay);
-                log.info(":添加本地任务[" + taskDefine.stringKey() + "]");
+            Task task = resolveTaskName(runnable);
+            if (task.getType().equals(DefaultConstants.TYPE_SPRING_TASK)) {
+                super.scheduleWithFixedDelay(runnable, startTime, delay);
+                log.info(":添加 Spring 本地任务[" + task.stringKey() + "]");
             } else {
-                taskDefine.setStartTime(startTime);
-                taskDefine.setPeriod(delay);
-                scheduleTask.addTask(taskDefine);
-                scheduledFuture = super.scheduleWithFixedDelay(taskWrapper(task), startTime, delay);
-                log.info(ScheduleServer.getInstance().getUuid() + ":自动向集群注册任务[" + taskDefine.stringKey() + "]");
+                task.setStartTime(startTime);
+                task.setPeriod(delay);
+                scheduleTask.addTask(task);
+                scheduledFuture = super.scheduleWithFixedDelay(taskWrapper(runnable), startTime, delay);
+                log.info("添加 Taroco 动态任务[" + task.stringKey() + "]");
             }
         } catch (Exception e) {
             log.error("update task error", e);
@@ -230,18 +230,18 @@ public class ThreadPoolTaskGenerator extends ThreadPoolTaskScheduler implements 
     }
 
     @Override
-    public ScheduledFuture<?> scheduleWithFixedDelay(Runnable task, long delay) {
+    public ScheduledFuture<?> scheduleWithFixedDelay(Runnable runnable, long delay) {
         ScheduledFuture scheduledFuture = null;
         try {
-            Task taskDefine = resolveTaskName(task);
-            if (taskDefine.getType().equals(DefaultConstants.TYPE_SPRING_TASK)) {
-                super.scheduleWithFixedDelay(task, delay);
-                log.info(":添加本地任务[" + taskDefine.stringKey() + "]");
+            Task task = resolveTaskName(runnable);
+            if (task.getType().equals(DefaultConstants.TYPE_SPRING_TASK)) {
+                super.scheduleWithFixedDelay(runnable, delay);
+                log.info(":添加 Spring 本地任务[" + task.stringKey() + "]");
             } else {
-                taskDefine.setPeriod(delay);
-                scheduleTask.addTask(taskDefine);
-                scheduledFuture = super.scheduleWithFixedDelay(taskWrapper(task), delay);
-                log.info(ScheduleServer.getInstance().getUuid() + ":自动向集群注册任务[" + taskDefine.stringKey() + "]");
+                task.setPeriod(delay);
+                scheduleTask.addTask(task);
+                scheduledFuture = super.scheduleWithFixedDelay(taskWrapper(runnable), delay);
+                log.info("添加 Taroco 动态任务[" + task.stringKey() + "]");
             }
         } catch (Exception e) {
             log.error("update task error", e);
