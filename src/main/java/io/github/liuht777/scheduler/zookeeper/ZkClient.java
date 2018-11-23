@@ -1,5 +1,6 @@
 package io.github.liuht777.scheduler.zookeeper;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.github.liuht777.scheduler.ThreadPoolTaskGenerator;
 import io.github.liuht777.scheduler.config.TarocoSchedulerProperties;
 import io.github.liuht777.scheduler.core.IScheduleTask;
@@ -16,9 +17,11 @@ import org.apache.zookeeper.CreateMode;
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
-import org.springframework.scheduling.annotation.Scheduled;
 
 import java.util.List;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import static io.github.liuht777.scheduler.constant.DefaultConstants.NODE_SERVER;
 import static io.github.liuht777.scheduler.constant.DefaultConstants.NODE_TASK;
@@ -33,35 +36,29 @@ import static io.github.liuht777.scheduler.constant.DefaultConstants.NODE_TASK;
 public class ZkClient implements ApplicationContextAware {
 
     /**
+     * 静态 ApplicationContext
+     */
+    private static ApplicationContext applicationContext;
+    /**
      * zookeeper 客户端
      */
     private CuratorFramework client;
-
     /**
      * 配置properties
      */
     private TarocoSchedulerProperties schedulerProperties;
-
     /**
      * server节点接口
      */
     private ISchedulerServer iSchedulerServer;
-
     /**
      * task 相关接口对象
      */
     private IScheduleTask iScheduleTask;
-
     /**
      * task 线程对象
      */
     private ThreadPoolTaskGenerator taskGenerator;
-
-    /**
-     * 静态 ApplicationContext
-     */
-    private static ApplicationContext applicationContext;
-
     /**
      * task节点
      */
@@ -72,6 +69,11 @@ public class ZkClient implements ApplicationContextAware {
      */
     private String serverPath;
 
+    /**
+     * 定时刷新/检查 线程池
+     */
+    private ScheduledExecutorService refreshTaskExecutor;
+
     public ZkClient(TarocoSchedulerProperties schedulerProperties,
                     ISchedulerServer iSchedulerServer,
                     IScheduleTask iScheduleTask,
@@ -80,7 +82,13 @@ public class ZkClient implements ApplicationContextAware {
         this.iSchedulerServer = iSchedulerServer;
         this.iScheduleTask = iScheduleTask;
         this.taskGenerator = taskGenerator;
+        this.refreshTaskExecutor = new ScheduledThreadPoolExecutor(1,
+                new ThreadFactoryBuilder().setNameFormat("server-task-timer-").build());
         this.connect();
+    }
+
+    public static ApplicationContext getApplicationcontext() {
+        return ZkClient.applicationContext;
     }
 
     /**
@@ -109,6 +117,8 @@ public class ZkClient implements ApplicationContextAware {
                     log.info("connected with zookeeper");
                     this.initPath();
                     this.initWatchAndRegistServer();
+                    // 检查本地任务
+                    this.checkLocalTask();
                     break;
                 case RECONNECTED:
                     // 挂起或者丢失连接后重新连接
@@ -228,11 +238,14 @@ public class ZkClient implements ApplicationContextAware {
     }
 
     /**
-     * 定时每15秒一次 检查/执行 本地任务
+     * 定时检查/执行 本地任务
+     * 1. 清理过时的本地任务(zk上已经删除的)
+     * 2. 添加执行分配给自己的任务
      */
-    @Scheduled(cron = "0/15 * * * * ? ")
     public void checkLocalTask() {
-        iSchedulerServer.checkLocalTask(ScheduleServer.getInstance().getUuid());
+        refreshTaskExecutor.scheduleAtFixedRate(
+                () -> iSchedulerServer.checkLocalTask(ScheduleServer.getInstance().getUuid()),
+                0, schedulerProperties.getRefreshTaskInterval(), TimeUnit.SECONDS);
     }
 
     /**
@@ -253,6 +266,7 @@ public class ZkClient implements ApplicationContextAware {
 
     /**
      * 返回 IScheduleTask
+     *
      * @return IScheduleTask
      */
     public IScheduleTask getiScheduleTask() {
@@ -261,6 +275,7 @@ public class ZkClient implements ApplicationContextAware {
 
     /**
      * 返回 ISchedulerServer
+     *
      * @return ISchedulerServer
      */
     public ISchedulerServer getiSchedulerServer() {
@@ -269,6 +284,7 @@ public class ZkClient implements ApplicationContextAware {
 
     /**
      * 返回 ThreadPoolTaskGenerator
+     *
      * @return ThreadPoolTaskGenerator
      */
     public ThreadPoolTaskGenerator getTaskGenerator() {
@@ -278,9 +294,5 @@ public class ZkClient implements ApplicationContextAware {
     @Override
     public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
         ZkClient.applicationContext = applicationContext;
-    }
-
-    public static ApplicationContext getApplicationcontext() {
-        return ZkClient.applicationContext;
     }
 }

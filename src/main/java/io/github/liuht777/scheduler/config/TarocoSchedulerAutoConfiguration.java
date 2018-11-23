@@ -50,16 +50,6 @@ public class TarocoSchedulerAutoConfiguration {
     }
 
     /**
-     * 定义 ZkClient 对象
-     */
-    @Bean
-    public ZkClient zkClient(ISchedulerServer iSchedulerServer,
-                             IScheduleTask iScheduleTask,
-                             ThreadPoolTaskGenerator taskGenerator) {
-        return new ZkClient(properties, iSchedulerServer, iScheduleTask, taskGenerator);
-    }
-
-    /**
      * 定义定时任务生成器 bean名称必须为 taskScheduler
      */
     @Bean(name = "taskScheduler")
@@ -69,5 +59,15 @@ public class TarocoSchedulerAutoConfiguration {
                 scheduleTask, schedulerServer);
         schedulerTaskManager.setThreadNamePrefix("TarocoSchedulerPool-");
         return schedulerTaskManager;
+    }
+
+    /**
+     * 定义 ZkClient 对象
+     */
+    @Bean
+    public ZkClient zkClient(ISchedulerServer iSchedulerServer,
+                             IScheduleTask iScheduleTask,
+                             ThreadPoolTaskGenerator taskGenerator) {
+        return new ZkClient(properties, iSchedulerServer, iScheduleTask, taskGenerator);
     }
 }

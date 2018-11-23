@@ -26,6 +26,11 @@ public class TarocoSchedulerProperties {
     private int poolSize = 10;
 
     /**
+     * the interval for refresh & check tasks from zookeeper, default: 30 seconds
+     */
+    private int refreshTaskInterval = 30;
+
+    /**
      * zookeeper properties
      */
     private Zk zk;
