@@ -128,13 +128,7 @@ public class ThreadPoolTaskGenerator extends ThreadPoolTaskScheduler implements 
             Task task = resolveTaskName(runnable);
             if (task.getType().equals(DefaultConstants.TYPE_SPRING_TASK)) {
                 // Spring 本地任务需要先添加到集群管理, 由集群统一分配后再执行
-                if (scheduleTask.isExistsTask(task)) {
-                    if (schedulerServer.isOwner(task.stringKey(), ScheduleServer.getInstance().getUuid())) {
-                        // 在集群中存在, 并且属于自己, 才执行
-                        scheduledFuture = super.scheduleAtFixedRate(runnable, period);
-                        log.info(":添加 Spring 本地任务[" + task.stringKey() + "]");
-                    }
-                } else {
+                if (!scheduleTask.isExistsTask(task)) {
                     task.setStartTime(new Date(System.currentTimeMillis()));
                     task.setPeriod(period);
                     scheduleTask.addTask(task);
@@ -158,13 +152,7 @@ public class ThreadPoolTaskGenerator extends ThreadPoolTaskScheduler implements 
             Task task = resolveTaskName(runnable);
             if (task.getType().equals(DefaultConstants.TYPE_SPRING_TASK)) {
                 // Spring 本地任务需要先添加到集群管理, 由集群统一分配后再执行
-                if (scheduleTask.isExistsTask(task)) {
-                    if (schedulerServer.isOwner(task.stringKey(), ScheduleServer.getInstance().getUuid())) {
-                        // 在集群中存在, 并且属于自己, 才执行
-                        scheduledFuture = super.schedule(runnable, trigger);
-                        log.info(":添加 Spring 本地任务[" + task.stringKey() + "]");
-                    }
-                } else {
+                if (!scheduleTask.isExistsTask(task)) {
                     task.setStartTime(new Date(System.currentTimeMillis()));
                     String cronEx = trigger.toString();
                     int index = cronEx.indexOf(":");
@@ -192,13 +180,7 @@ public class ThreadPoolTaskGenerator extends ThreadPoolTaskScheduler implements 
             Task task = resolveTaskName(runnable);
             if (task.getType().equals(DefaultConstants.TYPE_SPRING_TASK)) {
                 // Spring 本地任务需要先添加到集群管理, 由集群统一分配后再执行
-                if (scheduleTask.isExistsTask(task)) {
-                    if (schedulerServer.isOwner(task.stringKey(), ScheduleServer.getInstance().getUuid())) {
-                        // 在集群中存在, 并且属于自己, 才执行
-                        scheduledFuture = super.schedule(runnable, startTime);
-                        log.info(":添加 Spring 本地任务[" + task.stringKey() + "]");
-                    }
-                } else {
+                if (!scheduleTask.isExistsTask(task)) {
                     task.setStartTime(startTime);
                     scheduleTask.addTask(task);
                 }
@@ -220,13 +202,7 @@ public class ThreadPoolTaskGenerator extends ThreadPoolTaskScheduler implements 
             Task task = resolveTaskName(runnable);
             if (task.getType().equals(DefaultConstants.TYPE_SPRING_TASK)) {
                 // Spring 本地任务需要先添加到集群管理, 由集群统一分配后再执行
-                if (scheduleTask.isExistsTask(task)) {
-                    if (schedulerServer.isOwner(task.stringKey(), ScheduleServer.getInstance().getUuid())) {
-                        // 在集群中存在, 并且属于自己, 才执行
-                        scheduledFuture = super.scheduleAtFixedRate(runnable, startTime, period);
-                        log.info(":添加 Spring 本地任务[" + task.stringKey() + "]");
-                    }
-                } else {
+                if (!scheduleTask.isExistsTask(task)) {
                     task.setStartTime(startTime);
                     task.setPeriod(period);
                     scheduleTask.addTask(task);
@@ -249,13 +225,7 @@ public class ThreadPoolTaskGenerator extends ThreadPoolTaskScheduler implements 
             Task task = resolveTaskName(runnable);
             if (task.getType().equals(DefaultConstants.TYPE_SPRING_TASK)) {
                 // Spring 本地任务需要先添加到集群管理, 由集群统一分配后再执行
-                if (scheduleTask.isExistsTask(task)) {
-                    if (schedulerServer.isOwner(task.stringKey(), ScheduleServer.getInstance().getUuid())) {
-                        // 在集群中存在, 并且属于自己, 才执行
-                        scheduledFuture = super.scheduleWithFixedDelay(runnable, startTime, delay);
-                        log.info(":添加 Spring 本地任务[" + task.stringKey() + "]");
-                    }
-                } else {
+                if (!scheduleTask.isExistsTask(task)) {
                     task.setStartTime(startTime);
                     task.setPeriod(delay);
                     scheduleTask.addTask(task);
@@ -278,13 +248,7 @@ public class ThreadPoolTaskGenerator extends ThreadPoolTaskScheduler implements 
             Task task = resolveTaskName(runnable);
             if (task.getType().equals(DefaultConstants.TYPE_SPRING_TASK)) {
                 // Spring 本地任务需要先添加到集群管理, 由集群统一分配后再执行
-                if (scheduleTask.isExistsTask(task)) {
-                    if (schedulerServer.isOwner(task.stringKey(), ScheduleServer.getInstance().getUuid())) {
-                        // 在集群中存在, 并且属于自己, 才执行
-                        scheduledFuture = super.scheduleWithFixedDelay(runnable, delay);
-                        log.info(":添加 Spring 本地任务[" + task.stringKey() + "]");
-                    }
-                } else {
+                if (!scheduleTask.isExistsTask(task)) {
                     task.setStartTime(new Date(System.currentTimeMillis()));
                     task.setPeriod(delay);
                     scheduleTask.addTask(task);
