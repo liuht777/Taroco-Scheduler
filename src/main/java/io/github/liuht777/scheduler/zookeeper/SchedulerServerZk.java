@@ -1,7 +1,6 @@
 package io.github.liuht777.scheduler.zookeeper;
 
-import io.github.liuht777.scheduler.DynamicTaskManager;
-import io.github.liuht777.scheduler.constant.DefaultConstants;
+import io.github.liuht777.scheduler.TaskManager;
 import io.github.liuht777.scheduler.core.ISchedulerServer;
 import io.github.liuht777.scheduler.core.ScheduleServer;
 import io.github.liuht777.scheduler.core.Task;
@@ -188,14 +187,12 @@ public class SchedulerServerZk implements ISchedulerServer {
                         Task task = new Task();
                         task.valueOf(td);
                         localTasks.add(taskName);
-                        if (DefaultConstants.TYPE_TAROCO_TASK.equals(task.getType())) {
-                            // 动态任务才使用 DynamicTaskManager启动
-                            DynamicTaskManager.scheduleTask(task);
-                        }
+                        // 启动任务
+                        TaskManager.scheduleTask(task);
                     }
                 }
             }
-            DynamicTaskManager.clearLocalTask(localTasks);
+            TaskManager.clearLocalTask(localTasks);
         } catch (Exception e) {
             log.error("checkLocalTask failed", e);
         }

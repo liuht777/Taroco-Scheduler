@@ -127,11 +127,20 @@ public class ThreadPoolTaskGenerator extends ThreadPoolTaskScheduler implements 
         try {
             Task task = resolveTaskName(runnable);
             if (task.getType().equals(DefaultConstants.TYPE_SPRING_TASK)) {
-                super.scheduleAtFixedRate(runnable, period);
-                log.info(":添加 Spring 本地任务[" + task.stringKey() + "]");
+                // Spring 本地任务需要先添加到集群管理, 由集群统一分配后再执行
+                if (scheduleTask.isExistsTask(task)) {
+                    if (schedulerServer.isOwner(task.stringKey(), ScheduleServer.getInstance().getUuid())) {
+                        // 在集群中存在, 并且属于自己, 才执行
+                        scheduledFuture = super.scheduleAtFixedRate(runnable, period);
+                        log.info(":添加 Spring 本地任务[" + task.stringKey() + "]");
+                    }
+                } else {
+                    task.setStartTime(new Date(System.currentTimeMillis()));
+                    task.setPeriod(period);
+                    scheduleTask.addTask(task);
+                }
             } else {
-                task.setPeriod(period);
-                scheduleTask.addTask(task);
+                // 动态任务直接执行
                 scheduledFuture = super.scheduleAtFixedRate(taskWrapper(runnable), period);
                 log.info("添加 Taroco 动态任务[" + task.stringKey() + "]");
             }
@@ -148,16 +157,25 @@ public class ThreadPoolTaskGenerator extends ThreadPoolTaskScheduler implements 
         try {
             Task task = resolveTaskName(runnable);
             if (task.getType().equals(DefaultConstants.TYPE_SPRING_TASK)) {
-                super.schedule(runnable, trigger);
-                log.info(":添加 Spring 本地任务[" + task.stringKey() + "]");
-            } else {
-                String cronEx = trigger.toString();
-                int index = cronEx.indexOf(":");
-                if (index >= 0) {
-                    cronEx = cronEx.substring(index + 1);
-                    task.setCronExpression(cronEx.trim());
+                // Spring 本地任务需要先添加到集群管理, 由集群统一分配后再执行
+                if (scheduleTask.isExistsTask(task)) {
+                    if (schedulerServer.isOwner(task.stringKey(), ScheduleServer.getInstance().getUuid())) {
+                        // 在集群中存在, 并且属于自己, 才执行
+                        scheduledFuture = super.schedule(runnable, trigger);
+                        log.info(":添加 Spring 本地任务[" + task.stringKey() + "]");
+                    }
+                } else {
+                    task.setStartTime(new Date(System.currentTimeMillis()));
+                    String cronEx = trigger.toString();
+                    int index = cronEx.indexOf(":");
+                    if (index >= 0) {
+                        cronEx = cronEx.substring(index + 1);
+                        task.setCronExpression(cronEx.trim());
+                    }
+                    scheduleTask.addTask(task);
                 }
-                scheduleTask.addTask(task);
+            } else {
+                // 动态任务直接执行
                 scheduledFuture = super.schedule(taskWrapper(runnable), trigger);
                 log.info("添加 Taroco 动态任务[" + task.stringKey() + "]");
             }
@@ -173,11 +191,19 @@ public class ThreadPoolTaskGenerator extends ThreadPoolTaskScheduler implements 
         try {
             Task task = resolveTaskName(runnable);
             if (task.getType().equals(DefaultConstants.TYPE_SPRING_TASK)) {
-                super.schedule(runnable, startTime);
-                log.info(":添加 Spring 本地任务[" + task.stringKey() + "]");
+                // Spring 本地任务需要先添加到集群管理, 由集群统一分配后再执行
+                if (scheduleTask.isExistsTask(task)) {
+                    if (schedulerServer.isOwner(task.stringKey(), ScheduleServer.getInstance().getUuid())) {
+                        // 在集群中存在, 并且属于自己, 才执行
+                        scheduledFuture = super.schedule(runnable, startTime);
+                        log.info(":添加 Spring 本地任务[" + task.stringKey() + "]");
+                    }
+                } else {
+                    task.setStartTime(startTime);
+                    scheduleTask.addTask(task);
+                }
             } else {
-                task.setStartTime(startTime);
-                scheduleTask.addTask(task);
+                // 动态任务直接执行
                 scheduledFuture = super.schedule(taskWrapper(runnable), startTime);
                 log.info("添加 Taroco 动态任务[" + task.stringKey() + "]");
             }
@@ -193,12 +219,20 @@ public class ThreadPoolTaskGenerator extends ThreadPoolTaskScheduler implements 
         try {
             Task task = resolveTaskName(runnable);
             if (task.getType().equals(DefaultConstants.TYPE_SPRING_TASK)) {
-                scheduledFuture = super.scheduleAtFixedRate(runnable, startTime, period);
-                log.info(":添加 Spring 本地任务[" + task.stringKey() + "]");
+                // Spring 本地任务需要先添加到集群管理, 由集群统一分配后再执行
+                if (scheduleTask.isExistsTask(task)) {
+                    if (schedulerServer.isOwner(task.stringKey(), ScheduleServer.getInstance().getUuid())) {
+                        // 在集群中存在, 并且属于自己, 才执行
+                        scheduledFuture = super.scheduleAtFixedRate(runnable, startTime, period);
+                        log.info(":添加 Spring 本地任务[" + task.stringKey() + "]");
+                    }
+                } else {
+                    task.setStartTime(startTime);
+                    task.setPeriod(period);
+                    scheduleTask.addTask(task);
+                }
             } else {
-                task.setStartTime(startTime);
-                task.setPeriod(period);
-                scheduleTask.addOrUpdate(task);
+                // 动态任务直接执行
                 scheduledFuture = super.scheduleAtFixedRate(taskWrapper(runnable), startTime, period);
                 log.info("添加 Taroco 动态任务[" + task.stringKey() + "]");
             }
@@ -214,12 +248,20 @@ public class ThreadPoolTaskGenerator extends ThreadPoolTaskScheduler implements 
         try {
             Task task = resolveTaskName(runnable);
             if (task.getType().equals(DefaultConstants.TYPE_SPRING_TASK)) {
-                super.scheduleWithFixedDelay(runnable, startTime, delay);
-                log.info(":添加 Spring 本地任务[" + task.stringKey() + "]");
+                // Spring 本地任务需要先添加到集群管理, 由集群统一分配后再执行
+                if (scheduleTask.isExistsTask(task)) {
+                    if (schedulerServer.isOwner(task.stringKey(), ScheduleServer.getInstance().getUuid())) {
+                        // 在集群中存在, 并且属于自己, 才执行
+                        scheduledFuture = super.scheduleWithFixedDelay(runnable, startTime, delay);
+                        log.info(":添加 Spring 本地任务[" + task.stringKey() + "]");
+                    }
+                } else {
+                    task.setStartTime(startTime);
+                    task.setPeriod(delay);
+                    scheduleTask.addTask(task);
+                }
             } else {
-                task.setStartTime(startTime);
-                task.setPeriod(delay);
-                scheduleTask.addTask(task);
+                // 动态任务直接执行
                 scheduledFuture = super.scheduleWithFixedDelay(taskWrapper(runnable), startTime, delay);
                 log.info("添加 Taroco 动态任务[" + task.stringKey() + "]");
             }
@@ -235,11 +277,20 @@ public class ThreadPoolTaskGenerator extends ThreadPoolTaskScheduler implements 
         try {
             Task task = resolveTaskName(runnable);
             if (task.getType().equals(DefaultConstants.TYPE_SPRING_TASK)) {
-                super.scheduleWithFixedDelay(runnable, delay);
-                log.info(":添加 Spring 本地任务[" + task.stringKey() + "]");
+                // Spring 本地任务需要先添加到集群管理, 由集群统一分配后再执行
+                if (scheduleTask.isExistsTask(task)) {
+                    if (schedulerServer.isOwner(task.stringKey(), ScheduleServer.getInstance().getUuid())) {
+                        // 在集群中存在, 并且属于自己, 才执行
+                        scheduledFuture = super.scheduleWithFixedDelay(runnable, delay);
+                        log.info(":添加 Spring 本地任务[" + task.stringKey() + "]");
+                    }
+                } else {
+                    task.setStartTime(new Date(System.currentTimeMillis()));
+                    task.setPeriod(delay);
+                    scheduleTask.addTask(task);
+                }
             } else {
-                task.setPeriod(delay);
-                scheduleTask.addTask(task);
+                // 动态任务直接执行
                 scheduledFuture = super.scheduleWithFixedDelay(taskWrapper(runnable), delay);
                 log.info("添加 Taroco 动态任务[" + task.stringKey() + "]");
             }

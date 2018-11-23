@@ -27,7 +27,7 @@ import java.util.concurrent.ScheduledFuture;
  * @author liuht
  */
 @Slf4j
-public class DynamicTaskManager {
+public class TaskManager {
 
     /**
      * 缓存 scheduleKey 与 ScheduledFuture, 删除任务时可以优雅的关闭任务
@@ -46,7 +46,7 @@ public class DynamicTaskManager {
      * @param task  定时任务
      */
     public synchronized static void scheduleTask(Task task) {
-        log.info("开始启动任务: " + task.stringKey());
+        log.debug("开始启动任务: " + task.stringKey());
         boolean newTask = true;
         if (SCHEDULE_FUTURES.containsKey(task.stringKey())) {
             if (task.equals(TASKS.get(task.stringKey()))) {
@@ -55,10 +55,15 @@ public class DynamicTaskManager {
             }
         }
         if (newTask) {
+            scheduleTask(
+                    task.getTargetBean(),
+                    task.getTargetMethod(),
+                    task.getCronExpression(),
+                    task.getStartTime(),
+                    task.getPeriod(),
+                    task.getParams(),
+                    task.getExtKeySuffix());
             TASKS.put(task.stringKey(), task);
-            scheduleTask(task.getTargetBean(), task.getTargetMethod(),
-                    task.getCronExpression(), task.getStartTime(), task.getPeriod(),
-                    task.getParams(), task.getExtKeySuffix());
             log.debug("成功添加任务: " + task.stringKey());
         }
     }
@@ -107,18 +112,18 @@ public class DynamicTaskManager {
                 if (scheduledMethodRunnable != null) {
                     if (StringUtils.isNotEmpty(cronExpression)) {
                         Trigger trigger = new CronTrigger(cronExpression);
-                        scheduledFuture = DynamicTaskHelper.getZkClient().getTaskGenerator().schedule(scheduledMethodRunnable,
+                        scheduledFuture = TaskHelper.getZkClient().getTaskGenerator().schedule(scheduledMethodRunnable,
                                 trigger);
                     } else if (startTime != null) {
                         if (period > 0) {
-                            scheduledFuture = DynamicTaskHelper.getZkClient().getTaskGenerator()
+                            scheduledFuture = TaskHelper.getZkClient().getTaskGenerator()
                                     .scheduleAtFixedRate(scheduledMethodRunnable, startTime, period);
                         } else {
-                            scheduledFuture = DynamicTaskHelper.getZkClient().getTaskGenerator()
+                            scheduledFuture = TaskHelper.getZkClient().getTaskGenerator()
                                     .schedule(scheduledMethodRunnable, startTime);
                         }
                     } else if (period > 0) {
-                        scheduledFuture = DynamicTaskHelper.getZkClient().getTaskGenerator()
+                        scheduledFuture = TaskHelper.getZkClient().getTaskGenerator()
                                 .scheduleAtFixedRate(scheduledMethodRunnable, period);
                     }
                     if (null != scheduledFuture) {
@@ -126,7 +131,7 @@ public class DynamicTaskManager {
                         log.debug("成功启动动态任务, bean=" + targetBean + ", method=" + targetMethod +", params=" + params);
                     }
                 } else {
-                    DynamicTaskHelper.getZkClient().getiScheduleTask()
+                    TaskHelper.getZkClient().getiScheduleTask()
                             .saveRunningInfo(scheduleKey, ScheduleServer.getInstance().getUuid(), "bean not exists");
                     log.debug("启动动态任务失败: Bean name is not exists.");
                 }
@@ -148,7 +153,7 @@ public class DynamicTaskManager {
         } catch (Exception e) {
             String name = ScheduleUtil.buildScheduleKey(targetBean, targetMethod, extKeySuffix);
             try {
-                DynamicTaskHelper.getZkClient().getiScheduleTask().saveRunningInfo(name,
+                TaskHelper.getZkClient().getiScheduleTask().saveRunningInfo(name,
                         ScheduleServer.getInstance().getUuid(), "method is null");
             } catch (Exception e1) {
                 log.debug(e.getLocalizedMessage(), e);
