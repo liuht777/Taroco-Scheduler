@@ -38,6 +38,7 @@ public class TarocoSchedulerAutoConfiguration {
         final String serverPath = rootPath + "/" + NODE_SERVER;
         return new SchedulerServerZk(serverPath, taskPath);
     }
+
     /**
      * 定义 IScheduleTask 对象
      */
@@ -62,11 +63,10 @@ public class TarocoSchedulerAutoConfiguration {
      * 定义定时任务生成器 bean名称必须为 taskScheduler
      */
     @Bean(name = "taskScheduler")
-    public ThreadPoolTaskGenerator schedulerTaskManager(ZkClient zkClient,
-                                                        IScheduleTask scheduleTask,
+    public ThreadPoolTaskGenerator schedulerTaskManager(IScheduleTask scheduleTask,
                                                         ISchedulerServer schedulerServer) {
         final ThreadPoolTaskGenerator schedulerTaskManager = new ThreadPoolTaskGenerator(properties.getPoolSize(),
-                scheduleTask, schedulerServer, zkClient);
+                scheduleTask, schedulerServer);
         schedulerTaskManager.setThreadNamePrefix("TarocoSchedulerPool-");
         return schedulerTaskManager;
     }

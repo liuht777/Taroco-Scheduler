@@ -138,15 +138,15 @@ public class ZkClient implements ApplicationContextAware {
      * 初始化监听和注册当前server节点
      */
     private void initWatchAndRegistServer() {
+        // 设置client对象
+        this.iScheduleTask.setClient(client);
+        this.iSchedulerServer.setClient(client);
         // 监听节点, 负责重新分配任务
         this.watchPath(this.taskPath);
         this.watchPath(this.serverPath);
         // 设置为未注册
         ScheduleServer.getInstance().setRegister(false);
-        // 设置task 的client对象
-        this.iScheduleTask.setClient(client);
         // 注册当前server
-        this.iSchedulerServer.setClient(client);
         this.iSchedulerServer.registerScheduleServer(ScheduleServer.getInstance());
     }
 
@@ -249,15 +249,6 @@ public class ZkClient implements ApplicationContextAware {
         }
         // 执行任务分配
         iSchedulerServer.assignTask(ScheduleServer.getInstance().getUuid(), serverList);
-    }
-
-    /**
-     * 返回 client 对象
-     *
-     * @return CuratorFramework
-     */
-    public CuratorFramework getClient() {
-        return client;
     }
 
     /**

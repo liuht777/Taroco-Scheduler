@@ -6,7 +6,6 @@ import io.github.liuht777.scheduler.core.ISchedulerServer;
 import io.github.liuht777.scheduler.core.ScheduleServer;
 import io.github.liuht777.scheduler.core.ScheduledMethodRunnable;
 import io.github.liuht777.scheduler.core.Task;
-import io.github.liuht777.scheduler.zookeeper.ZkClient;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeansException;
@@ -37,16 +36,12 @@ public class ThreadPoolTaskGenerator extends ThreadPoolTaskScheduler implements 
 
     private ISchedulerServer schedulerServer;
 
-    private ZkClient zkClient;
-
     public ThreadPoolTaskGenerator(int poolsize,
                                    IScheduleTask scheduleTask,
-                                   ISchedulerServer schedulerServer,
-                                   ZkClient zkClient) {
+                                   ISchedulerServer schedulerServer) {
         this.setPoolSize(poolsize);
         this.scheduleTask = scheduleTask;
         this.schedulerServer = schedulerServer;
-        this.zkClient = zkClient;
     }
 
     public static ApplicationContext getApplicationcontext() {

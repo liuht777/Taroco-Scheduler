@@ -108,7 +108,7 @@ public class ScheduleTaskZk implements IScheduleTask {
     @Override
     public void addTask(Task task) {
         if (isExistsTask(task)) {
-            log.warn("任务: {}, 已经存在", task.stringKey());
+            log.info("任务: {}, 已经存在", task.stringKey());
             return;
         }
         try {
