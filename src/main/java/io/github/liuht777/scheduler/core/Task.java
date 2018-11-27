@@ -137,7 +137,7 @@ public class Task {
         if (task.getStartTime() != null) {
             this.startTime = task.getStartTime();
         }
-        if (task.getPeriod() > 0) {
+        if (task.getPeriod() != null && task.getPeriod() > 0) {
             this.period = task.getPeriod();
         }
         if (StringUtils.isNotBlank(task.getParams())) {

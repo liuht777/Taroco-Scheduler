@@ -4,11 +4,13 @@ import io.github.liuht777.scheduler.core.ScheduleServer;
 import io.github.liuht777.scheduler.core.ScheduledMethodRunnable;
 import io.github.liuht777.scheduler.core.Task;
 import io.github.liuht777.scheduler.util.ScheduleUtil;
-import io.github.liuht777.scheduler.zookeeper.ZkClient;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.aop.framework.AopProxyUtils;
 import org.springframework.aop.support.AopUtils;
+import org.springframework.beans.BeansException;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
 import org.springframework.scheduling.Trigger;
 import org.springframework.scheduling.support.CronTrigger;
 import org.springframework.util.Assert;
@@ -27,17 +29,19 @@ import java.util.concurrent.ScheduledFuture;
  * @author liuht
  */
 @Slf4j
-public class TaskManager {
+public class TaskManager implements ApplicationContextAware {
 
     /**
      * 缓存 scheduleKey 与 ScheduledFuture, 删除任务时可以优雅的关闭任务
      */
-    private static final Map<String, ScheduledFuture<?>> SCHEDULE_FUTURES = new ConcurrentHashMap<>();
+    private final Map<String, ScheduledFuture<?>> SCHEDULE_FUTURES = new ConcurrentHashMap<>();
 
     /**
      * 缓存 scheduleKey 与 TaskDefine任务具体信息
      */
-    private static final Map<String, Task> TASKS = new ConcurrentHashMap<>();
+    private final Map<String, Task> TASKS = new ConcurrentHashMap<>();
+
+    private ApplicationContext applicationContext;
 
     /**
      * 添加并且启动定时任务
@@ -45,7 +49,7 @@ public class TaskManager {
      *
      * @param task  定时任务
      */
-    public synchronized static void scheduleTask(Task task) {
+    public synchronized void scheduleTask(Task task) {
         log.debug("开始启动任务: " + task.stringKey());
         boolean newTask = true;
         if (SCHEDULE_FUTURES.containsKey(task.stringKey())) {
@@ -75,7 +79,7 @@ public class TaskManager {
      *                       如果远程没有了,本地还有,就要清除本地数据
      *                       并且停止本地任务cancel(true)
      */
-    public static void clearLocalTask(List<String> existsTaskName) {
+    public void clearLocalTask(List<String> existsTaskName) {
         for (String name : SCHEDULE_FUTURES.keySet()) {
             if (!existsTaskName.contains(name)) {
                 SCHEDULE_FUTURES.get(name).cancel(true);
@@ -102,8 +106,8 @@ public class TaskManager {
      * @param params         给方法传递的参数
      * @param extKeySuffix   任务后缀名
      */
-    private static void scheduleTask(String targetBean, String targetMethod, String cronExpression, Date startTime, long
-            period, String params, String extKeySuffix) {
+    private void scheduleTask(String targetBean, String targetMethod, String cronExpression,
+                                     Date startTime, Long period, String params, String extKeySuffix) {
         String scheduleKey = ScheduleUtil.buildScheduleKey(targetBean, targetMethod, extKeySuffix);
         try {
             if (!SCHEDULE_FUTURES.containsKey(scheduleKey)) {
@@ -144,11 +148,11 @@ public class TaskManager {
     /**
      * 封装ScheduledMethodRunnable对象
      */
-    private static ScheduledMethodRunnable buildScheduledRunnable(String targetBean, String targetMethod, String params, String extKeySuffix) {
+    private ScheduledMethodRunnable buildScheduledRunnable(String targetBean, String targetMethod, String params, String extKeySuffix) {
         Object bean;
         ScheduledMethodRunnable scheduledMethodRunnable = null;
         try {
-            bean = ZkClient.getApplicationcontext().getBean(targetBean);
+            bean = applicationContext.getBean(targetBean);
             scheduledMethodRunnable = buildScheduledRunnable(bean, targetMethod, params, extKeySuffix);
         } catch (Exception e) {
             String name = ScheduleUtil.buildScheduleKey(targetBean, targetMethod, extKeySuffix);
@@ -166,7 +170,7 @@ public class TaskManager {
     /**
      * 封装ScheduledMethodRunnable对象
      */
-    private static ScheduledMethodRunnable buildScheduledRunnable(Object bean, String targetMethod, String params, String extKeySuffix) {
+    private ScheduledMethodRunnable buildScheduledRunnable(Object bean, String targetMethod, String params, String extKeySuffix) {
 
         Assert.notNull(bean, "target object must not be null");
         Assert.hasLength(targetMethod, "Method name must not be empty");
@@ -187,5 +191,10 @@ public class TaskManager {
         Assert.notNull(method, "can not find method named " + targetMethod);
         scheduledMethodRunnable = new ScheduledMethodRunnable(bean, method, params, extKeySuffix);
         return scheduledMethodRunnable;
+    }
+
+    @Override
+    public void setApplicationContext(final ApplicationContext applicationContext) throws BeansException {
+        this.applicationContext = applicationContext;
     }
 }

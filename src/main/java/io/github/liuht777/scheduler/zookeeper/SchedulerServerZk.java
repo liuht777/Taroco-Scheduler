@@ -31,10 +31,12 @@ public class SchedulerServerZk implements ISchedulerServer {
     private String pathServer;
     private String pathTask;
     private CuratorFramework client;
+    private TaskManager taskManager;
 
-    public SchedulerServerZk(String pathServer, String pathTask) {
+    public SchedulerServerZk(String pathServer, String pathTask, TaskManager taskManager) {
         this.pathTask = pathTask;
         this.pathServer = pathServer;
+        this.taskManager = taskManager;
     }
 
     @Override
@@ -188,11 +190,11 @@ public class SchedulerServerZk implements ISchedulerServer {
                         task.valueOf(td);
                         localTasks.add(taskName);
                         // 启动任务
-                        TaskManager.scheduleTask(task);
+                        taskManager.scheduleTask(task);
                     }
                 }
             }
-            TaskManager.clearLocalTask(localTasks);
+            taskManager.clearLocalTask(localTasks);
         } catch (Exception e) {
             log.error("checkLocalTask failed", e);
         }

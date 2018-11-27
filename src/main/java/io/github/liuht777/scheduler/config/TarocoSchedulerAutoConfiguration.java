@@ -1,5 +1,6 @@
 package io.github.liuht777.scheduler.config;
 
+import io.github.liuht777.scheduler.TaskManager;
 import io.github.liuht777.scheduler.ThreadPoolTaskGenerator;
 import io.github.liuht777.scheduler.core.IScheduleTask;
 import io.github.liuht777.scheduler.core.ISchedulerServer;
@@ -32,11 +33,11 @@ public class TarocoSchedulerAutoConfiguration {
      * 定义 ISchedulerServer对象
      */
     @Bean
-    public ISchedulerServer iSchedulerServer() {
+    public ISchedulerServer iSchedulerServer(TaskManager taskManager) {
         final String rootPath = properties.getZk().getRootPath();
         final String taskPath = rootPath + "/" + NODE_TASK;
         final String serverPath = rootPath + "/" + NODE_SERVER;
-        return new SchedulerServerZk(serverPath, taskPath);
+        return new SchedulerServerZk(serverPath, taskPath, taskManager);
     }
 
     /**
@@ -47,6 +48,15 @@ public class TarocoSchedulerAutoConfiguration {
         final String rootPath = properties.getZk().getRootPath();
         final String taskPath = rootPath + "/" + NODE_TASK;
         return new ScheduleTaskZk(taskPath);
+    }
+
+    /**
+     * 定义动态任务管理
+     *
+     */
+    @Bean
+    public TaskManager taskManager() {
+        return new TaskManager();
     }
 
     /**
