@@ -1,12 +1,12 @@
 package io.github.liuht777.scheduler.zookeeper;
 
-import io.github.liuht777.scheduler.DynamicTaskManager;
-import io.github.liuht777.scheduler.constant.DefaultConstants;
+import io.github.liuht777.scheduler.TaskManager;
 import io.github.liuht777.scheduler.core.ISchedulerServer;
 import io.github.liuht777.scheduler.core.ScheduleServer;
 import io.github.liuht777.scheduler.core.Task;
 import io.github.liuht777.scheduler.util.JsonUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.curator.framework.CuratorFramework;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.data.Stat;
 import org.springframework.util.CollectionUtils;
@@ -19,42 +19,29 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * 任务器操作实现类
+ * server节点接口的zookeeper实现
  *
  * @author liuht
  * @date 2017/10/21 14:27
  */
 @Slf4j
-public class SchedulerServer implements ISchedulerServer {
+public class SchedulerServerZk implements ISchedulerServer {
 
     private AtomicInteger pos = new AtomicInteger(0);
     private String pathServer;
     private String pathTask;
-    private ZkClient zkClient;
-    private long zkBaseTime = 0;
-    private long loclaBaseTime = 0;
+    private CuratorFramework client;
+    private TaskManager taskManager;
 
-    public SchedulerServer(ZkClient zkClient, String pathServer, String pathTask) {
-        this.zkClient = zkClient;
+    public SchedulerServerZk(String pathServer, String pathTask, TaskManager taskManager) {
         this.pathTask = pathTask;
         this.pathServer = pathServer;
-        try {
-            long timeApart = 5000;
-            // zookeeper时间与服务端时间差距判断
-            final String rootPath = this.zkClient.getSchedulerProperties().getZk().getRootPath();
-            final String tempPath = this.zkClient.getClient().create()
-                    .withMode(CreateMode.EPHEMERAL_SEQUENTIAL)
-                    .forPath(rootPath + "/systime");
-            final Stat tempStat = this.zkClient.getClient().checkExists().forPath(tempPath);
-            zkBaseTime = tempStat.getCtime();
-            this.zkClient.getClient().delete().deletingChildrenIfNeeded().forPath(tempPath);
-            loclaBaseTime = System.currentTimeMillis();
-            if (Math.abs(this.zkBaseTime - this.loclaBaseTime) > timeApart) {
-                log.warn("请注意，Zookeeper服务器时间与本地时间相差 ： " + Math.abs(this.zkBaseTime - this.loclaBaseTime) + " ms");
-            }
-        } catch (Exception e) {
-            log.error("zookeeper时间与本地时间校验失败.", e);
-        }
+        this.taskManager = taskManager;
+    }
+
+    @Override
+    public void setClient(final CuratorFramework client) {
+        this.client = client;
     }
 
     @Override
@@ -69,11 +56,11 @@ public class SchedulerServer implements ISchedulerServer {
             final String id = server.getIp() + "$" + UUID.randomUUID().toString().replaceAll("-", "").toUpperCase();
             final String zkServerPath = pathServer + "/" + id + "$";
             // 临时顺序节点
-            realPath = this.zkClient.getClient().create().withMode(CreateMode.EPHEMERAL_SEQUENTIAL)
+            realPath = client.create().withMode(CreateMode.EPHEMERAL_SEQUENTIAL)
                     .forPath(zkServerPath);
             server.setUuid(realPath.substring(realPath.lastIndexOf("/") + 1));
             String valueString = JsonUtil.object2Json(server);
-            this.zkClient.getClient().setData().forPath(realPath, valueString.getBytes());
+            client.setData().forPath(realPath, valueString.getBytes());
             server.setRegister(true);
             log.info("注册server成功: {}", server.getUuid());
         } catch (Exception e) {
@@ -86,10 +73,10 @@ public class SchedulerServer implements ISchedulerServer {
         List<String> serverList = new ArrayList<>(1);
         try {
             String zkPath = this.pathServer;
-            if (this.zkClient.getClient().checkExists().forPath(zkPath) == null) {
+            if (client.checkExists().forPath(zkPath) == null) {
                 return Collections.emptyList();
             }
-            serverList = this.zkClient.getClient().getChildren().forPath(zkPath);
+            serverList = client.getChildren().forPath(zkPath);
             serverList.sort(Comparator.comparing(u -> u.substring(u.lastIndexOf("$") + 1)));
         } catch (Exception e) {
             log.error("loadScheduleServerNames failed", e);
@@ -99,6 +86,10 @@ public class SchedulerServer implements ISchedulerServer {
 
     @Override
     public void assignTask(String currentUuid, List<String> taskServerList) {
+        if (CollectionUtils.isEmpty(taskServerList)) {
+            log.info("当前Server List 为空, 暂不能分配任务...");
+            return;
+        }
         log.info("当前server:[" + currentUuid + "]: 开始重新分配任务......");
         if (!this.isLeader(currentUuid, taskServerList)) {
             log.info("当前server:[" + currentUuid + "]: 不是负责任务分配的Leader,直接返回");
@@ -111,14 +102,14 @@ public class SchedulerServer implements ISchedulerServer {
         }
         try {
             String zkPath = this.pathTask;
-            List<String> taskNames = this.zkClient.getClient().getChildren().forPath(zkPath);
+            List<String> taskNames = client.getChildren().forPath(zkPath);
             if (CollectionUtils.isEmpty(taskNames)) {
                 log.info("当前server:[" + currentUuid + "]: 分配结束,没有集群任务");
                 return;
             }
             for (String taskName : taskNames) {
                 String taskPath = zkPath + "/" + taskName;
-                List<String> taskServerIds = this.zkClient.getClient().getChildren().forPath(taskPath);
+                List<String> taskServerIds = client.getChildren().forPath(taskPath);
                 if (CollectionUtils.isEmpty(taskServerIds)) {
                     // 没有找到目标server信息, 执行分配任务给server节点
                     assignServer2Task(taskServerList, taskPath);
@@ -128,7 +119,7 @@ public class SchedulerServer implements ISchedulerServer {
                         if (taskServerList.contains(serverId)) {
                             //防止重复分配任务，如果已经成功分配，第二个以后都删除
                             if (hasAssignSuccess) {
-                                this.zkClient.getClient().delete().deletingChildrenIfNeeded()
+                                client.delete().deletingChildrenIfNeeded()
                                         .forPath(taskPath + "/" + serverId);
                             } else {
                                 hasAssignSuccess = true;
@@ -145,6 +136,7 @@ public class SchedulerServer implements ISchedulerServer {
         }
     }
 
+
     /**
      * 重新分配任务给server 采用轮询分配的方式
      * 分配任务操作是同步的
@@ -160,12 +152,12 @@ public class SchedulerServer implements ISchedulerServer {
         String serverId = taskServerList.get(pos.intValue());
         pos.incrementAndGet();
         try {
-            if (this.zkClient.getClient().checkExists().forPath(taskPath) != null) {
+            if (client.checkExists().forPath(taskPath) != null) {
                 final String runningInfo = "0:" + System.currentTimeMillis();
                 final String path = taskPath + "/" + serverId;
-                final Stat stat = this.zkClient.getClient().checkExists().forPath(path);
+                final Stat stat = client.checkExists().forPath(path);
                 if (stat == null) {
-                    this.zkClient.getClient()
+                    client
                             .create()
                             .withMode(CreateMode.EPHEMERAL)
                             .forPath(path, runningInfo.getBytes());
@@ -181,7 +173,7 @@ public class SchedulerServer implements ISchedulerServer {
     public void checkLocalTask(String currentUuid) {
         try {
             String zkPath = this.pathTask;
-            List<String> taskNames = this.zkClient.getClient().getChildren().forPath(zkPath);
+            List<String> taskNames = client.getChildren().forPath(zkPath);
             if (CollectionUtils.isEmpty(taskNames)) {
                 log.debug("当前server:[" + currentUuid + "]: 检查本地任务结束, 任务列表为空");
                 return;
@@ -190,21 +182,19 @@ public class SchedulerServer implements ISchedulerServer {
             for (String taskName : taskNames) {
                 if (isOwner(taskName, currentUuid)) {
                     String taskPath = zkPath + "/" + taskName;
-                    byte[] data = this.zkClient.getClient().getData().forPath(taskPath);
+                    byte[] data = client.getData().forPath(taskPath);
                     if (null != data) {
                         String json = new String(data);
                         Task td = JsonUtil.json2Object(json, Task.class);
                         Task task = new Task();
                         task.valueOf(td);
                         localTasks.add(taskName);
-                        if (DefaultConstants.TYPE_TAROCO_TASK.equals(task.getType())) {
-                            // 动态任务才使用 DynamicTaskManager启动
-                            DynamicTaskManager.scheduleTask(task);
-                        }
+                        // 启动任务
+                        taskManager.scheduleTask(task);
                     }
                 }
             }
-            DynamicTaskManager.clearLocalTask(localTasks);
+            taskManager.clearLocalTask(localTasks);
         } catch (Exception e) {
             log.error("checkLocalTask failed", e);
         }
@@ -217,7 +207,7 @@ public class SchedulerServer implements ISchedulerServer {
         String zkPath = this.pathTask + "/" + taskName;
         //判断是否分配给当前节点
         try {
-            if (this.zkClient.getClient().checkExists().forPath(zkPath + "/" + serverUuid) != null) {
+            if (client.checkExists().forPath(zkPath + "/" + serverUuid) != null) {
                 isOwner = true;
             }
         } catch (Exception e) {
@@ -250,9 +240,5 @@ public class SchedulerServer implements ISchedulerServer {
             }
         }
         return leader;
-    }
-
-    private long getSystemTime() {
-        return this.zkBaseTime + (System.currentTimeMillis() - this.loclaBaseTime);
     }
 }

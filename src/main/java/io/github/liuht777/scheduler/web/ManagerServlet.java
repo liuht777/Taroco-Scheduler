@@ -1,6 +1,6 @@
 package io.github.liuht777.scheduler.web;
 
-import io.github.liuht777.scheduler.DynamicTaskHelper;
+import io.github.liuht777.scheduler.TaskHelper;
 import io.github.liuht777.scheduler.core.Task;
 import org.apache.commons.lang3.StringUtils;
 
@@ -164,7 +164,7 @@ public class ManagerServlet extends HttpServlet {
                     "\t 						<th width=\"50\">类型</th>\n" +
                     "\t 						<th width=\"50\">cron表达式</th>\n" +
                     "\t 						<th width=\"50\">开始时间</th>\n" +
-                    "\t 						<th width=\"50\">周期（秒）</th>\n" +
+                    "\t 						<th width=\"50\">周期（毫秒）</th>\n" +
                     "\t 						<th width=\"50\">执行节点</th>\n" +
                     "\t 						<th width=\"50\">运行状态</th>\n" +
                     "\t 						<th width=\"50\">执行次数</th>\n" +
@@ -197,7 +197,7 @@ public class ManagerServlet extends HttpServlet {
             if (dels.length > 2) {
                 task.setExtKeySuffix(dels[2]);
             }
-            DynamicTaskHelper.delScheduleTask(task);
+            TaskHelper.delScheduleTask(task);
             response.sendRedirect(request.getSession().getServletContext().getContextPath() + "/taroco/scheduler");
         } else if (StringUtils.isNotEmpty(start)) {
             Task task = new Task();
@@ -208,7 +208,7 @@ public class ManagerServlet extends HttpServlet {
                 task.setExtKeySuffix(dels[2]);
             }
             task.setStatus(STATUS_RUNNING);
-            DynamicTaskHelper.updateScheduleTask(task);
+            TaskHelper.updateScheduleTask(task);
             response.sendRedirect(request.getSession().getServletContext().getContextPath() + "/taroco/scheduler");
         } else if (StringUtils.isNotEmpty(stop)) {
             Task task = new Task();
@@ -219,7 +219,7 @@ public class ManagerServlet extends HttpServlet {
                 task.setExtKeySuffix(dels[2]);
             }
             task.setStatus(STATUS_STOP);
-            DynamicTaskHelper.updateScheduleTask(task);
+            TaskHelper.updateScheduleTask(task);
             response.sendRedirect(request.getSession().getServletContext().getContextPath() + "/taroco/scheduler");
         } else if (StringUtils.isNotEmpty(bean) && StringUtils.isNotEmpty(method)) {
             Task task = new Task();
@@ -256,12 +256,12 @@ public class ManagerServlet extends HttpServlet {
                 task.setExtKeySuffix(extKeySuffix);
             }
             if (StringUtils.isNotEmpty(cronExpression) || StringUtils.isNotEmpty(period) || StringUtils.isNotEmpty(startTime)) {
-                DynamicTaskHelper.addScheduleTask(task);
+                TaskHelper.addScheduleTask(task);
             }
             response.sendRedirect(request.getSession().getServletContext().getContextPath() + "/taroco/scheduler");
         }
         try {
-            List<String> servers = DynamicTaskHelper.getSchedulerTaskManager().getSchedulerServer().loadScheduleServerNames();
+            List<String> servers = TaskHelper.getZkClient().getiSchedulerServer().loadScheduleServerNames();
             if (servers != null) {
                 response.setContentType("text/html;charset=UTF-8");
                 PrintWriter out = response.getWriter();
@@ -271,7 +271,7 @@ public class ManagerServlet extends HttpServlet {
                     sb.append("<tr class=\"info\">")
                             .append("<td>").append(i + 1).append("</td>")
                             .append("<td>").append(ser).append("</td>");
-                    if (DynamicTaskHelper.getSchedulerTaskManager().getSchedulerServer().isLeader(ser, servers)) {
+                    if (TaskHelper.getZkClient().getiSchedulerServer().isLeader(ser, servers)) {
                         sb.append("<td>").append("是").append("</td>");
                     } else {
                         sb.append("<td>").append("否").append("</td>");
@@ -279,7 +279,7 @@ public class ManagerServlet extends HttpServlet {
                     sb.append("</tr>");
                 }
 
-                List<Task> tasks = DynamicTaskHelper.queryScheduleTask();
+                List<Task> tasks = TaskHelper.queryScheduleTask();
                 StringBuilder sbTask = new StringBuilder();
                 SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                 for (int i = 0; i < tasks.size(); i++) {
