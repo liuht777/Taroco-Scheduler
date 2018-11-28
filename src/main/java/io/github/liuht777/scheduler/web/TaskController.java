@@ -1,35 +1,36 @@
-package io.github.liuht777.scheduler.endpoint;
-
+package io.github.liuht777.scheduler.web;
 
 import io.github.liuht777.scheduler.core.ISchedulerServer;
 import io.github.liuht777.scheduler.vo.ServerVo;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.actuate.endpoint.annotation.ReadOperation;
-import org.springframework.boot.actuate.endpoint.web.annotation.WebEndpoint;
-import org.springframework.http.MediaType;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 定时任务server端点
+ * task Controller
  *
  * @author liuht
- * 2018/11/27 15:44
+ * 2018/11/28 16:31
  */
-@WebEndpoint(id = "taroco-scheduler-server")
-public class SchedulerServerEndpoint {
+@Controller
+@RequestMapping("/taroco/scheduler/task")
+public class TaskController {
 
     @Autowired
     private ISchedulerServer schedulerServer;
 
     /**
-     * 查询server节点
+     * 返回task页面
      *
-     * @return server节点list
+     * @return
      */
-    @ReadOperation(produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
-    public List<ServerVo> servers() {
+    @GetMapping
+    public String list(Model model) {
         final List<String> serverNames = schedulerServer.loadScheduleServerNames();
         final List<ServerVo> result = new ArrayList<>(serverNames.size());
         serverNames.forEach(name -> {
@@ -38,6 +39,7 @@ public class SchedulerServerEndpoint {
             server.setIsLeader(schedulerServer.isLeader(name, serverNames));
             result.add(server);
         });
-        return result;
+        model.addAttribute("serverList", result);
+        return "taroco/task";
     }
 }

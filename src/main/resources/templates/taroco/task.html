@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <title>Taroco Scheduler Dashbord</title>
+    <meta charset="utf-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport"/>
+    <link rel="stylesheet" th:href="@{/taroco/css/bootstrap.min.css}" />
+    <link rel="stylesheet" th:href="@{/taroco/plugins/bootstrap-table/bootstrap-table.min.css}" />
+    <script type="text/javascript" th:src="@{/taroco/js/jquery.min.js}"></script>
+    <script type="text/javascript" th:src="@{/taroco/js/bootstrap.min.js}"></script>
+    <script type="text/javascript" th:src="@{/taroco/plugins/bootstrap-table/bootstrap-table.min.js}"></script>
+    <script type="text/javascript" th:src="@{/taroco/plugins/bootstrap-table/bootstrap-table-zh-CN.min.js}"></script>
+</head>
+
+<body>
+    <div class="container-fluid">
+        <h1>Taroco Scheduler Dashbord</h1>
+        <p>集群节点</p>
+        <table id="server">
+            <thead>
+                <tr>
+                    <th data-field="index">序号</th>
+                    <th data-field="name">名称</th>
+                    <th data-field="isLeader">调度节点</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="item, status:${serverList}">
+                    <td th:text="${status.index}"></td>
+                    <td th:text="${item.name}"></td>
+                    <td th:text="${item.isLeader}"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <script>
+        $(function () {
+            $('#server').bootstrapTable();
+        })
+    </script>
+</body>
+
+</html>
