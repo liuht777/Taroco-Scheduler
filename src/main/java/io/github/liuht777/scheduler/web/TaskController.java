@@ -2,7 +2,9 @@ package io.github.liuht777.scheduler.web;
 
 import io.github.liuht777.scheduler.core.IScheduleTask;
 import io.github.liuht777.scheduler.core.ISchedulerServer;
+import io.github.liuht777.scheduler.core.Task;
 import io.github.liuht777.scheduler.vo.ServerVo;
+import io.github.liuht777.scheduler.vo.TaskVo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -44,7 +46,10 @@ public class TaskController {
             result.add(server);
         });
         model.addAttribute("serverList", result);
-        model.addAttribute("taskList", scheduleTask.selectTask());
+        final List<Task> tasks = scheduleTask.selectTask();
+        List<TaskVo> taskList = new ArrayList<>(tasks.size());
+        tasks.forEach(task -> taskList.add(TaskVo.valueOf(task)));
+        model.addAttribute("taskList", taskList);
         return "taroco/task";
     }
 }
