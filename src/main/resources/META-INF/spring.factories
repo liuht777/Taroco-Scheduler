@@ -1,2 +1,3 @@
 org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
-io.github.liuht777.scheduler.config.TarocoSchedulerAutoConfiguration
+io.github.liuht777.scheduler.config.TarocoSchedulerAutoConfiguration,\
+io.github.liuht777.scheduler.web.TaskController
