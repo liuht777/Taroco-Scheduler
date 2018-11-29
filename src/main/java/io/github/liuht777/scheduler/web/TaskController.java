@@ -1,5 +1,6 @@
 package io.github.liuht777.scheduler.web;
 
+import io.github.liuht777.scheduler.core.IScheduleTask;
 import io.github.liuht777.scheduler.core.ISchedulerServer;
 import io.github.liuht777.scheduler.vo.ServerVo;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +25,9 @@ public class TaskController {
     @Autowired
     private ISchedulerServer schedulerServer;
 
+    @Autowired
+    private IScheduleTask scheduleTask;
+
     /**
      * 返回task页面
      *
@@ -40,6 +44,7 @@ public class TaskController {
             result.add(server);
         });
         model.addAttribute("serverList", result);
+        model.addAttribute("taskList", scheduleTask.selectTask());
         return "taroco/task";
     }
 }

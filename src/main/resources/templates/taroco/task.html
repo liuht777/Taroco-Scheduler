@@ -36,10 +36,45 @@
                 </tr>
             </tbody>
         </table>
+        <p></p>
+        <p>集群任务</p>
+        <table id="task">
+            <thead>
+            <tr>
+                <th data-field="index">序号</th>
+                <th data-field="targetBean">目标Bean</th>
+                <th data-field="targetMethod">目标方法</th>
+                <th data-field="cronExpression">cron表达式</th>
+                <th data-field="startTime">开始时间</th>
+                <th data-field="period">周期（毫秒）</th>
+                <th data-field="params">参数</th>
+                <th data-field="type">任务类型</th>
+                <th data-field="runTimes">执行次数</th>
+                <th data-field="lastRunningTime">最后执行时间</th>
+                <th data-field="status">状态</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="item, status:${taskList}">
+                <td th:text="${status.index}"></td>
+                <td th:text="${item.targetBean}"></td>
+                <td th:text="${item.targetMethod}"></td>
+                <td th:text="${item.cronExpression}"></td>
+                <td th:text="${item.startTime}"></td>
+                <td th:text="${item.period}"></td>
+                <td th:text="${item.params}"></td>
+                <td th:text="${item.type}"></td>
+                <td th:text="${item.runTimes}"></td>
+                <td th:text="${item.lastRunningTime}"></td>
+                <td th:text="${item.status}"></td>
+            </tr>
+            </tbody>
+        </table>
     </div>
     <script>
         $(function () {
             $('#server').bootstrapTable();
+            $('#task').bootstrapTable();
         })
     </script>
 </body>
