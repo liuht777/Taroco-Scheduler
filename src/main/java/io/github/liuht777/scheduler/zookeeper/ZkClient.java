@@ -249,6 +249,6 @@ public class ZkClient implements ApplicationEventPublisherAware {
 
     @Override
     public void setApplicationEventPublisher(final ApplicationEventPublisher applicationEventPublisher) {
-
+        this.eventPublisher = applicationEventPublisher;
     }
 }
