@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import static io.github.liuht777.scheduler.constant.DefaultConstants.NODE_SERVER;
 import static io.github.liuht777.scheduler.constant.DefaultConstants.NODE_TASK;
@@ -22,6 +23,7 @@ import static io.github.liuht777.scheduler.constant.DefaultConstants.NODE_TASK;
  * @author liuht
  */
 @Configuration
+@EnableScheduling
 @EnableConfigurationProperties( {TarocoSchedulerProperties.class})
 @Slf4j
 public class TarocoSchedulerAutoConfiguration {
