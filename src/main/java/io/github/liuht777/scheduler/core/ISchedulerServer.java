@@ -22,22 +22,6 @@ public interface ISchedulerServer {
     boolean isOwner(String taskName, String serverUuid);
 
     /**
-     * 检查本地的定时任务，添加调度器；这是动态添加的任务的真正开始执行的地方
-     * 如果有的话启动该定时任务；这是一种自定义的定时任务类型，任务的启动方式也是自定义的，主要方法在类 TaskManager 中；
-     *
-     * @param currentUuid 当前服务器唯一标识
-     */
-    void checkLocalTask(String currentUuid);
-
-    /**
-     * 分配任务
-     *
-     * @param currentUuid    当前服务器uuid
-     * @param taskServerList 所有服务器uuid(过滤后的)
-     */
-    void assignTask(String currentUuid, List<String> taskServerList);
-
-    /**
      * 设置 CuratorFramework
      * @param client zk client对象
      */

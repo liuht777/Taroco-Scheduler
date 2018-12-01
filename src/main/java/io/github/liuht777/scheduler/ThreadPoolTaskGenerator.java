@@ -264,4 +264,11 @@ public class ThreadPoolTaskGenerator extends ThreadPoolTaskScheduler implements 
         return scheduledFuture;
     }
 
+    public ISchedulerServer getSchedulerServer() {
+        return schedulerServer;
+    }
+
+    public IScheduleTask getScheduleTask() {
+        return scheduleTask;
+    }
 }

@@ -1,11 +1,18 @@
 package io.github.liuht777.scheduler;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import io.github.liuht777.scheduler.config.TarocoSchedulerProperties;
+import io.github.liuht777.scheduler.core.IScheduleTask;
 import io.github.liuht777.scheduler.core.ScheduleServer;
 import io.github.liuht777.scheduler.core.ScheduledMethodRunnable;
 import io.github.liuht777.scheduler.core.Task;
+import io.github.liuht777.scheduler.util.JsonUtil;
 import io.github.liuht777.scheduler.util.ScheduleUtil;
+import io.github.liuht777.scheduler.zookeeper.ZkClient;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.data.Stat;
 import org.springframework.aop.framework.AopProxyUtils;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.BeansException;
@@ -14,14 +21,16 @@ import org.springframework.context.ApplicationContextAware;
 import org.springframework.scheduling.Trigger;
 import org.springframework.scheduling.support.CronTrigger;
 import org.springframework.util.Assert;
+import org.springframework.util.CollectionUtils;
 import org.springframework.util.ReflectionUtils;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * 动态任务管理
@@ -41,7 +50,174 @@ public class TaskManager implements ApplicationContextAware {
      */
     private final Map<String, Task> TASKS = new ConcurrentHashMap<>();
 
+    private AtomicInteger pos = new AtomicInteger(0);
+
     private ApplicationContext applicationContext;
+
+    private ZkClient zkClient;
+    /**
+     * 定时刷新/检查 线程池
+     */
+    private ScheduledExecutorService refreshTaskExecutor;
+
+    public TaskManager(ZkClient zkClient) {
+        this.zkClient = zkClient;
+        this.refreshTaskExecutor = new ScheduledThreadPoolExecutor(1,
+                new ThreadFactoryBuilder().setNameFormat("ServerTaskCheckInterval").build());
+        this.checkLocalTask();
+    }
+
+    /**
+     * 根据当前调度服务器的信息，重新计算分配所有的调度任务 任务的分配是需要加锁，避免数据分配错误。
+     */
+    public void assignScheduleTask() {
+        List<String> serverList = zkClient.getTaskGenerator().getSchedulerServer().loadScheduleServerNames();
+        //黑名单
+        for (String ip : zkClient.getSchedulerProperties().getIpBlackList()) {
+            int index = serverList.indexOf(ip);
+            if (index > -1) {
+                serverList.remove(index);
+            }
+        }
+        // 执行任务分配
+        assignTask(ScheduleServer.getInstance().getUuid(), serverList);
+    }
+
+    /**
+     * 分配任务
+     *
+     * @param currentUuid    当前服务器uuid
+     * @param taskServerList 所有服务器uuid(过滤后的)
+     */
+    public void assignTask(String currentUuid, List<String> taskServerList) {
+        if (CollectionUtils.isEmpty(taskServerList)) {
+            log.info("当前Server List 为空, 暂不能分配任务...");
+            return;
+        }
+        log.info("当前server:[" + currentUuid + "]: 开始重新分配任务......");
+        if (!this.zkClient.getTaskGenerator().getSchedulerServer().isLeader(currentUuid, taskServerList)) {
+            log.info("当前server:[" + currentUuid + "]: 不是负责任务分配的Leader,直接返回");
+            return;
+        }
+        if (CollectionUtils.isEmpty(taskServerList)) {
+            //在服务器动态调整的时候，可能出现服务器列表为空的情况
+            log.info("服务器列表为空: 停止分配任务, 等待服务器上线...");
+            return;
+        }
+        try {
+            String zkPath = zkClient.getTaskPath();
+            List<String> taskNames = zkClient.getClient().getChildren().forPath(zkPath);
+            if (CollectionUtils.isEmpty(taskNames)) {
+                log.info("当前server:[" + currentUuid + "]: 分配结束,没有集群任务");
+                return;
+            }
+            for (String taskName : taskNames) {
+                String taskPath = zkPath + "/" + taskName;
+                List<String> taskServerIds = zkClient.getClient().getChildren().forPath(taskPath);
+                if (CollectionUtils.isEmpty(taskServerIds)) {
+                    // 没有找到目标server信息, 执行分配任务给server节点
+                    assignServer2Task(taskServerList, taskPath);
+                } else {
+                    boolean hasAssignSuccess = false;
+                    for (String serverId : taskServerIds) {
+                        if (taskServerList.contains(serverId)) {
+                            //防止重复分配任务，如果已经成功分配，第二个以后都删除
+                            if (hasAssignSuccess) {
+                                zkClient.getClient().delete().deletingChildrenIfNeeded()
+                                        .forPath(taskPath + "/" + serverId);
+                            } else {
+                                hasAssignSuccess = true;
+                            }
+                        }
+                    }
+                    if (!hasAssignSuccess) {
+                        assignServer2Task(taskServerList, taskPath);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("assignTask failed:", e);
+        }
+    }
+
+    /**
+     * 重新分配任务给server 采用轮询分配的方式
+     * 分配任务操作是同步的
+     *
+     * @param taskServerList 待分配server列表
+     * @param taskPath       任务path
+     */
+    private synchronized void assignServer2Task(List<String> taskServerList, String taskPath) {
+        if (pos.intValue() > taskServerList.size() - 1) {
+            pos.set(0);
+        }
+        // 轮询分配给server
+        String serverId = taskServerList.get(pos.intValue());
+        pos.incrementAndGet();
+        try {
+            if (zkClient.getClient().checkExists().forPath(taskPath) != null) {
+                final String runningInfo = "0:" + System.currentTimeMillis();
+                final String path = taskPath + "/" + serverId;
+                final Stat stat = zkClient.getClient().checkExists().forPath(path);
+                if (stat == null) {
+                    zkClient.getClient()
+                            .create()
+                            .withMode(CreateMode.EPHEMERAL)
+                            .forPath(path, runningInfo.getBytes());
+                }
+                log.info("成功分配任务 [" + taskPath + "]" + " 给 server [" + serverId + "]");
+            }
+        } catch (Exception e) {
+            log.error("assign task error", e);
+        }
+    }
+
+    /**
+     * 定时检查/执行 本地任务
+     * 1. 清理过时的本地任务(zk上已经删除的)
+     * 2. 添加执行分配给自己的任务
+     */
+    public void checkLocalTask() {
+        refreshTaskExecutor.scheduleAtFixedRate(
+                () -> checkLocalTask(ScheduleServer.getInstance().getUuid()),
+                0, zkClient.getSchedulerProperties().getRefreshTaskInterval(), TimeUnit.SECONDS);
+    }
+
+    /**
+     * 检查本地的定时任务，添加调度器；这是动态添加的任务的真正开始执行的地方
+     * 如果有的话启动该定时任务；这是一种自定义的定时任务类型，任务的启动方式也是自定义的，主要方法在类 TaskManager 中；
+     *
+     * @param currentUuid 当前服务器唯一标识
+     */
+    public void checkLocalTask(String currentUuid) {
+        try {
+            String zkPath = zkClient.getTaskPath();
+            List<String> taskNames = zkClient.getClient().getChildren().forPath(zkPath);
+            if (CollectionUtils.isEmpty(taskNames)) {
+                log.debug("当前server:[" + currentUuid + "]: 检查本地任务结束, 任务列表为空");
+                return;
+            }
+            List<String> localTasks = new ArrayList<>();
+            for (String taskName : taskNames) {
+                if (zkClient.getTaskGenerator().getSchedulerServer().isOwner(taskName, currentUuid)) {
+                    String taskPath = zkPath + "/" + taskName;
+                    byte[] data = zkClient.getClient().getData().forPath(taskPath);
+                    if (null != data) {
+                        String json = new String(data);
+                        Task td = JsonUtil.json2Object(json, Task.class);
+                        Task task = new Task();
+                        task.valueOf(td);
+                        localTasks.add(taskName);
+                        // 启动任务
+                        scheduleTask(task);
+                    }
+                }
+            }
+            clearLocalTask(localTasks);
+        } catch (Exception e) {
+            log.error("checkLocalTask failed", e);
+        }
+    }
 
     /**
      * 添加并且启动定时任务
@@ -116,27 +292,23 @@ public class TaskManager implements ApplicationContextAware {
                 if (scheduledMethodRunnable != null) {
                     if (StringUtils.isNotEmpty(cronExpression)) {
                         Trigger trigger = new CronTrigger(cronExpression);
-                        scheduledFuture = TaskHelper.getZkClient().getTaskGenerator().schedule(scheduledMethodRunnable,
+                        scheduledFuture = zkClient.getTaskGenerator().schedule(scheduledMethodRunnable,
                                 trigger);
                     } else if (startTime != null) {
                         if (period > 0) {
-                            scheduledFuture = TaskHelper.getZkClient().getTaskGenerator()
-                                    .scheduleAtFixedRate(scheduledMethodRunnable, startTime, period);
+                            scheduledFuture = zkClient.getTaskGenerator().scheduleAtFixedRate(scheduledMethodRunnable, startTime, period);
                         } else {
-                            scheduledFuture = TaskHelper.getZkClient().getTaskGenerator()
-                                    .schedule(scheduledMethodRunnable, startTime);
+                            scheduledFuture = zkClient.getTaskGenerator().schedule(scheduledMethodRunnable, startTime);
                         }
                     } else if (period > 0) {
-                        scheduledFuture = TaskHelper.getZkClient().getTaskGenerator()
-                                .scheduleAtFixedRate(scheduledMethodRunnable, period);
+                        scheduledFuture = zkClient.getTaskGenerator().scheduleAtFixedRate(scheduledMethodRunnable, period);
                     }
                     if (null != scheduledFuture) {
                         SCHEDULE_FUTURES.put(scheduleKey, scheduledFuture);
                         log.debug("成功启动动态任务, bean=" + targetBean + ", method=" + targetMethod +", params=" + params);
                     }
                 } else {
-                    TaskHelper.getZkClient().getiScheduleTask()
-                            .saveRunningInfo(scheduleKey, ScheduleServer.getInstance().getUuid(), "bean not exists");
+                    zkClient.getTaskGenerator().getScheduleTask().saveRunningInfo(scheduleKey, ScheduleServer.getInstance().getUuid(), "bean not exists");
                     log.debug("启动动态任务失败: Bean name is not exists.");
                 }
             }
@@ -157,8 +329,7 @@ public class TaskManager implements ApplicationContextAware {
         } catch (Exception e) {
             String name = ScheduleUtil.buildScheduleKey(targetBean, targetMethod, extKeySuffix);
             try {
-                TaskHelper.getZkClient().getiScheduleTask().saveRunningInfo(name,
-                        ScheduleServer.getInstance().getUuid(), "method is null");
+                zkClient.getTaskGenerator().getScheduleTask().saveRunningInfo(name, ScheduleServer.getInstance().getUuid(), "method is null");
             } catch (Exception e1) {
                 log.debug(e.getLocalizedMessage(), e);
             }

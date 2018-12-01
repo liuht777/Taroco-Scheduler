@@ -3,8 +3,6 @@ package io.github.liuht777.scheduler.zookeeper;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.github.liuht777.scheduler.ThreadPoolTaskGenerator;
 import io.github.liuht777.scheduler.config.TarocoSchedulerProperties;
-import io.github.liuht777.scheduler.core.IScheduleTask;
-import io.github.liuht777.scheduler.core.ISchedulerServer;
 import io.github.liuht777.scheduler.core.ScheduleServer;
 import io.github.liuht777.scheduler.core.Version;
 import lombok.extern.slf4j.Slf4j;
@@ -14,9 +12,6 @@ import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.recipes.cache.PathChildrenCache;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.zookeeper.CreateMode;
-import org.springframework.beans.BeansException;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
 
 import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
@@ -33,12 +28,7 @@ import static io.github.liuht777.scheduler.constant.DefaultConstants.NODE_TASK;
  * @author liuht
  */
 @Slf4j
-public class ZkClient implements ApplicationContextAware {
-
-    /**
-     * 静态 ApplicationContext
-     */
-    private static ApplicationContext applicationContext;
+public class ZkClient {
     /**
      * zookeeper 客户端
      */
@@ -48,14 +38,6 @@ public class ZkClient implements ApplicationContextAware {
      */
     private TarocoSchedulerProperties schedulerProperties;
     /**
-     * server节点接口
-     */
-    private ISchedulerServer iSchedulerServer;
-    /**
-     * task 相关接口对象
-     */
-    private IScheduleTask iScheduleTask;
-    /**
      * task 线程对象
      */
     private ThreadPoolTaskGenerator taskGenerator;
@@ -63,32 +45,16 @@ public class ZkClient implements ApplicationContextAware {
      * task节点
      */
     private String taskPath;
-
     /**
      * server节点
      */
     private String serverPath;
 
-    /**
-     * 定时刷新/检查 线程池
-     */
-    private ScheduledExecutorService refreshTaskExecutor;
-
     public ZkClient(TarocoSchedulerProperties schedulerProperties,
-                    ISchedulerServer iSchedulerServer,
-                    IScheduleTask iScheduleTask,
                     ThreadPoolTaskGenerator taskGenerator) {
         this.schedulerProperties = schedulerProperties;
-        this.iSchedulerServer = iSchedulerServer;
-        this.iScheduleTask = iScheduleTask;
         this.taskGenerator = taskGenerator;
-        this.refreshTaskExecutor = new ScheduledThreadPoolExecutor(1,
-                new ThreadFactoryBuilder().setNameFormat("ServerTaskCheckInterval").build());
         this.connect();
-    }
-
-    public static ApplicationContext getApplicationcontext() {
-        return ZkClient.applicationContext;
     }
 
     /**
@@ -149,15 +115,15 @@ public class ZkClient implements ApplicationContextAware {
      */
     private void initWatchAndRegistServer() {
         // 设置client对象
-        this.iScheduleTask.setClient(client);
-        this.iSchedulerServer.setClient(client);
+        this.taskGenerator.getSchedulerServer().setClient(client);
+        this.taskGenerator.getScheduleTask().setClient(client);
         // 监听节点, 负责重新分配任务
         this.watchPath(this.taskPath);
         this.watchPath(this.serverPath);
         // 设置为未注册
         ScheduleServer.getInstance().setRegister(false);
         // 注册当前server
-        this.iSchedulerServer.registerScheduleServer(ScheduleServer.getInstance());
+        this.taskGenerator.getSchedulerServer().registerScheduleServer(ScheduleServer.getInstance());
     }
 
     /**
@@ -238,51 +204,6 @@ public class ZkClient implements ApplicationContextAware {
     }
 
     /**
-     * 定时检查/执行 本地任务
-     * 1. 清理过时的本地任务(zk上已经删除的)
-     * 2. 添加执行分配给自己的任务
-     */
-    public void checkLocalTask() {
-        refreshTaskExecutor.scheduleAtFixedRate(
-                () -> iSchedulerServer.checkLocalTask(ScheduleServer.getInstance().getUuid()),
-                0, schedulerProperties.getRefreshTaskInterval(), TimeUnit.SECONDS);
-    }
-
-    /**
-     * 根据当前调度服务器的信息，重新计算分配所有的调度任务 任务的分配是需要加锁，避免数据分配错误。
-     */
-    public void assignScheduleTask() {
-        List<String> serverList = iSchedulerServer.loadScheduleServerNames();
-        //黑名单
-        for (String ip : schedulerProperties.getIpBlackList()) {
-            int index = serverList.indexOf(ip);
-            if (index > -1) {
-                serverList.remove(index);
-            }
-        }
-        // 执行任务分配
-        iSchedulerServer.assignTask(ScheduleServer.getInstance().getUuid(), serverList);
-    }
-
-    /**
-     * 返回 IScheduleTask
-     *
-     * @return IScheduleTask
-     */
-    public IScheduleTask getiScheduleTask() {
-        return iScheduleTask;
-    }
-
-    /**
-     * 返回 ISchedulerServer
-     *
-     * @return ISchedulerServer
-     */
-    public ISchedulerServer getiSchedulerServer() {
-        return iSchedulerServer;
-    }
-
-    /**
      * 返回 ThreadPoolTaskGenerator
      *
      * @return ThreadPoolTaskGenerator
@@ -291,8 +212,19 @@ public class ZkClient implements ApplicationContextAware {
         return taskGenerator;
     }
 
-    @Override
-    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
-        ZkClient.applicationContext = applicationContext;
+    public CuratorFramework getClient() {
+        return client;
+    }
+
+    public TarocoSchedulerProperties getSchedulerProperties() {
+        return schedulerProperties;
+    }
+
+    public String getTaskPath() {
+        return taskPath;
+    }
+
+    public String getServerPath() {
+        return serverPath;
     }
 }

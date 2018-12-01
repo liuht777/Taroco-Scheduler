@@ -55,8 +55,8 @@ public class TarocoSchedulerAutoConfiguration {
      *
      */
     @Bean
-    public TaskManager taskManager() {
-        return new TaskManager();
+    public TaskManager taskManager(ZkClient zkClient) {
+        return new TaskManager(zkClient);
     }
 
     /**
@@ -75,9 +75,7 @@ public class TarocoSchedulerAutoConfiguration {
      * 定义 ZkClient 对象
      */
     @Bean
-    public ZkClient zkClient(ISchedulerServer iSchedulerServer,
-                             IScheduleTask iScheduleTask,
-                             ThreadPoolTaskGenerator taskGenerator) {
-        return new ZkClient(properties, iSchedulerServer, iScheduleTask, taskGenerator);
+    public ZkClient zkClient(ThreadPoolTaskGenerator taskGenerator) {
+        return new ZkClient(properties, taskGenerator);
     }
 }
