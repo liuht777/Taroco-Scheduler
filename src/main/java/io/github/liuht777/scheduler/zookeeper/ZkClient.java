@@ -1,10 +1,10 @@
 package io.github.liuht777.scheduler.zookeeper;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.github.liuht777.scheduler.ThreadPoolTaskGenerator;
 import io.github.liuht777.scheduler.config.TarocoSchedulerProperties;
 import io.github.liuht777.scheduler.core.ScheduleServer;
 import io.github.liuht777.scheduler.core.Version;
+import io.github.liuht777.scheduler.event.AssignScheduleTaskEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
@@ -12,11 +12,8 @@ import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.recipes.cache.PathChildrenCache;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.zookeeper.CreateMode;
-
-import java.util.List;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.ApplicationEventPublisherAware;
 
 import static io.github.liuht777.scheduler.constant.DefaultConstants.NODE_SERVER;
 import static io.github.liuht777.scheduler.constant.DefaultConstants.NODE_TASK;
@@ -28,7 +25,7 @@ import static io.github.liuht777.scheduler.constant.DefaultConstants.NODE_TASK;
  * @author liuht
  */
 @Slf4j
-public class ZkClient {
+public class ZkClient implements ApplicationEventPublisherAware {
     /**
      * zookeeper 客户端
      */
@@ -49,6 +46,10 @@ public class ZkClient {
      * server节点
      */
     private String serverPath;
+    /**
+     * 事件发布器
+     */
+    private ApplicationEventPublisher eventPublisher;
 
     public ZkClient(TarocoSchedulerProperties schedulerProperties,
                     ThreadPoolTaskGenerator taskGenerator) {
@@ -83,8 +84,6 @@ public class ZkClient {
                     log.info("connected with zookeeper");
                     this.initPath();
                     this.initWatchAndRegistServer();
-                    // 检查本地任务
-                    this.checkLocalTask();
                     break;
                 case RECONNECTED:
                     // 挂起或者丢失连接后重新连接
@@ -187,11 +186,11 @@ public class ZkClient {
                         switch (event.getType()) {
                             case CHILD_ADDED:
                                 log.info("监听到节点变化: 新增path=: {}", event.getData().getPath());
-                                assignScheduleTask();
+                                eventPublisher.publishEvent(new AssignScheduleTaskEvent(event.getData().getPath()));
                                 break;
                             case CHILD_REMOVED:
                                 log.info("监听到节点变化: 删除path=: {}", event.getData().getPath());
-                                assignScheduleTask();
+                                eventPublisher.publishEvent(new AssignScheduleTaskEvent(event.getData().getPath()));
                                 break;
                             default:
                                 break;
@@ -212,19 +211,44 @@ public class ZkClient {
         return taskGenerator;
     }
 
+    /**
+     * 返回 CuratorFramework
+     *
+     * @return CuratorFramework
+     */
     public CuratorFramework getClient() {
         return client;
     }
 
+    /**
+     * 返回 TarocoSchedulerProperties
+     *
+     * @return TarocoSchedulerProperties
+     */
     public TarocoSchedulerProperties getSchedulerProperties() {
         return schedulerProperties;
     }
 
+    /**
+     * taskPath
+     *
+     * @return taskPath
+     */
     public String getTaskPath() {
         return taskPath;
     }
 
+    /**
+     * serverPath
+     *
+     * @return serverPath
+     */
     public String getServerPath() {
         return serverPath;
+    }
+
+    @Override
+    public void setApplicationEventPublisher(final ApplicationEventPublisher applicationEventPublisher) {
+
     }
 }

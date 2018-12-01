@@ -1,11 +1,10 @@
 package io.github.liuht777.scheduler;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import io.github.liuht777.scheduler.config.TarocoSchedulerProperties;
-import io.github.liuht777.scheduler.core.IScheduleTask;
 import io.github.liuht777.scheduler.core.ScheduleServer;
 import io.github.liuht777.scheduler.core.ScheduledMethodRunnable;
 import io.github.liuht777.scheduler.core.Task;
+import io.github.liuht777.scheduler.event.AssignScheduleTaskEvent;
 import io.github.liuht777.scheduler.util.JsonUtil;
 import io.github.liuht777.scheduler.util.ScheduleUtil;
 import io.github.liuht777.scheduler.zookeeper.ZkClient;
@@ -18,6 +17,7 @@ import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.Trigger;
 import org.springframework.scheduling.support.CronTrigger;
 import org.springframework.util.Assert;
@@ -29,7 +29,11 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -70,7 +74,8 @@ public class TaskManager implements ApplicationContextAware {
     /**
      * 根据当前调度服务器的信息，重新计算分配所有的调度任务 任务的分配是需要加锁，避免数据分配错误。
      */
-    public void assignScheduleTask() {
+    @EventListener
+    public void assignScheduleTask(AssignScheduleTaskEvent event) {
         List<String> serverList = zkClient.getTaskGenerator().getSchedulerServer().loadScheduleServerNames();
         //黑名单
         for (String ip : zkClient.getSchedulerProperties().getIpBlackList()) {

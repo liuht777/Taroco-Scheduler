@@ -33,11 +33,11 @@ public class TarocoSchedulerAutoConfiguration {
      * 定义 ISchedulerServer对象
      */
     @Bean
-    public ISchedulerServer iSchedulerServer(TaskManager taskManager) {
+    public ISchedulerServer iSchedulerServer() {
         final String rootPath = properties.getZk().getRootPath();
         final String taskPath = rootPath + "/" + NODE_TASK;
         final String serverPath = rootPath + "/" + NODE_SERVER;
-        return new SchedulerServerZk(serverPath, taskPath, taskManager);
+        return new SchedulerServerZk(serverPath, taskPath);
     }
 
     /**
