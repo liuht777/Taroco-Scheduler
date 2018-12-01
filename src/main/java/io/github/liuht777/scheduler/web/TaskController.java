@@ -5,10 +5,13 @@ import io.github.liuht777.scheduler.core.ISchedulerServer;
 import io.github.liuht777.scheduler.core.Task;
 import io.github.liuht777.scheduler.vo.ServerVo;
 import io.github.liuht777.scheduler.vo.TaskVo;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.util.ArrayList;
@@ -51,5 +54,15 @@ public class TaskController {
         tasks.forEach(task -> taskList.add(TaskVo.valueOf(task)));
         model.addAttribute("taskList", taskList);
         return "taroco/task";
+    }
+
+    @DeleteMapping("/{stringKey}")
+    public String removeTask(@PathVariable String stringKey) {
+        if (StringUtils.isNotEmpty(stringKey)) {
+            final String[] split = stringKey.split("#");
+            final Task task = new Task();
+
+        }
+        return "redirect:/taroco/scheduler/task";
     }
 }

@@ -52,6 +52,7 @@
                 <th data-field="runTimes">执行次数</th>
                 <th data-field="lastRunningTime">最后执行时间</th>
                 <th data-field="status">状态</th>
+                <th data-field="_operate">操作</th>
             </tr>
             </thead>
             <tbody>
@@ -67,6 +68,11 @@
                 <td th:text="${item.runTimes}"></td>
                 <td th:text="${item.lastRunningTime}"></td>
                 <td th:text="${item.status}"></td>
+                <td>
+                    <button th:if="${item.status == 'running'}" type="button" class="btn btn-info btn-sm">暂停</button>
+                    <button th:if="${item.status == 'stop'}" type="button" class="btn btn-primary btn-sm">启动</button>
+                    <button type="button" class="btn btn-danger btn-sm">删除</button>
+                </td>
             </tr>
             </tbody>
         </table>
