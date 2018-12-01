@@ -185,7 +185,7 @@ public class TaskManager implements ApplicationContextAware {
     public void checkLocalTask() {
         refreshTaskExecutor.scheduleAtFixedRate(
                 () -> checkLocalTask(ScheduleServer.getInstance().getUuid()),
-                0, zkClient.getSchedulerProperties().getRefreshTaskInterval(), TimeUnit.SECONDS);
+                5, zkClient.getSchedulerProperties().getRefreshTaskInterval(), TimeUnit.SECONDS);
     }
 
     /**
