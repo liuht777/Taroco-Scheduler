@@ -55,6 +55,17 @@ public class TaskController {
     }
 
     /**
+     * 新增任务
+     *
+     * @param taskVo 任务vo
+     */
+    @PostMapping
+    @ResponseBody
+    public void addTask(@RequestBody TaskVo taskVo) {
+        System.out.println(taskVo.toString());
+    }
+
+    /**
      * 删除任务
      *
      * @param stringKey 任务唯一key
