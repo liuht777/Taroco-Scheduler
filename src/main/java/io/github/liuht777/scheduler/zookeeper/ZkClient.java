@@ -186,11 +186,15 @@ public class ZkClient implements ApplicationEventPublisherAware {
                         switch (event.getType()) {
                             case CHILD_ADDED:
                                 log.info("监听到节点变化: 新增path=: {}", event.getData().getPath());
+                                // 新增server节点和task节点都需要触发重新分配任务事件
                                 eventPublisher.publishEvent(new AssignScheduleTaskEvent(event.getData().getPath()));
                                 break;
                             case CHILD_REMOVED:
                                 log.info("监听到节点变化: 删除path=: {}", event.getData().getPath());
-                                eventPublisher.publishEvent(new AssignScheduleTaskEvent(event.getData().getPath()));
+                                // 删除task节点不需要发布重新分配任务事件
+                                if (event.getData().getPath().startsWith(this.serverPath)) {
+                                    eventPublisher.publishEvent(new AssignScheduleTaskEvent(event.getData().getPath()));
+                                }
                                 break;
                             default:
                                 break;
