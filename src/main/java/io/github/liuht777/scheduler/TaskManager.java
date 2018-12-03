@@ -5,6 +5,7 @@ import io.github.liuht777.scheduler.core.ScheduleServer;
 import io.github.liuht777.scheduler.core.ScheduledMethodRunnable;
 import io.github.liuht777.scheduler.core.Task;
 import io.github.liuht777.scheduler.event.AssignScheduleTaskEvent;
+import io.github.liuht777.scheduler.rule.AssignServerRole;
 import io.github.liuht777.scheduler.util.JsonUtil;
 import io.github.liuht777.scheduler.util.ScheduleUtil;
 import io.github.liuht777.scheduler.zookeeper.ZkClient;
@@ -34,7 +35,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * 动态任务管理
@@ -54,25 +54,27 @@ public class TaskManager implements ApplicationContextAware {
      */
     private final Map<String, Task> TASKS = new ConcurrentHashMap<>();
 
-    private AtomicInteger pos = new AtomicInteger(0);
-
     private ApplicationContext applicationContext;
 
     private ZkClient zkClient;
+
+    private AssignServerRole assignServerRole;
+
     /**
      * 定时刷新/检查 线程池
      */
     private ScheduledExecutorService refreshTaskExecutor;
 
-    public TaskManager(ZkClient zkClient) {
+    public TaskManager(ZkClient zkClient, AssignServerRole assignServerRole) {
         this.zkClient = zkClient;
+        this.assignServerRole = assignServerRole;
         this.refreshTaskExecutor = new ScheduledThreadPoolExecutor(1,
                 new ThreadFactoryBuilder().setNameFormat("ServerTaskCheckInterval").build());
         this.checkLocalTask();
     }
 
     /**
-     * 根据当前调度服务器的信息，重新计算分配所有的调度任务 任务的分配是需要加锁，避免数据分配错误。
+     * 根据当前调度服务器的信息，重新计算分配所有的调度任务
      */
     @EventListener
     public void assignScheduleTask(AssignScheduleTaskEvent event) {
@@ -146,19 +148,14 @@ public class TaskManager implements ApplicationContextAware {
     }
 
     /**
-     * 重新分配任务给server 采用轮询分配的方式
-     * 分配任务操作是同步的
+     * 重新分配任务给server 任务的分配是需要加锁，避免数据分配错误。
      *
      * @param taskServerList 待分配server列表
      * @param taskPath       任务path
      */
     private synchronized void assignServer2Task(List<String> taskServerList, String taskPath) {
-        if (pos.intValue() > taskServerList.size() - 1) {
-            pos.set(0);
-        }
         // 轮询分配给server
-        String serverId = taskServerList.get(pos.intValue());
-        pos.incrementAndGet();
+        String serverId = assignServerRole.doSelect(taskServerList);
         try {
             if (zkClient.getClient().checkExists().forPath(taskPath) != null) {
                 final String runningInfo = "0:" + System.currentTimeMillis();
