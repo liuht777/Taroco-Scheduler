@@ -1,4 +1,5 @@
 # taroco-scheduler 分布式定时任务调度
+![任务管理界面](/exts/%E4%BB%BB%E5%8A%A1%E7%AE%A1%E7%90%86%E7%95%8C%E9%9D%A2.jpg "任务管理界面")
 
 基于 Spring Boot 2.0 + Spring Task + Zookeeper 的分布式任务调度组件，非常轻量级，使用简单，只需要引入jar包，不需要单独部署服务端。确保所有任务在集群中不重复，不遗漏的执行。
 
