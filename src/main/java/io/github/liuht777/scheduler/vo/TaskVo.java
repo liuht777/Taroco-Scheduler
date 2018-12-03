@@ -107,6 +107,7 @@ public class TaskVo {
         taskVo.setStatus(task.getStatus());
         taskVo.setExtKeySuffix(task.getExtKeySuffix());
         taskVo.setErrorMsg(task.getErrorMsg());
+        taskVo.setType(task.getType());
         return taskVo;
     }
 }

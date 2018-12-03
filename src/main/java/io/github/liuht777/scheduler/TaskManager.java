@@ -5,6 +5,7 @@ import io.github.liuht777.scheduler.core.ScheduleServer;
 import io.github.liuht777.scheduler.core.ScheduledMethodRunnable;
 import io.github.liuht777.scheduler.core.Task;
 import io.github.liuht777.scheduler.event.AssignScheduleTaskEvent;
+import io.github.liuht777.scheduler.event.ServerNodeAddEvent;
 import io.github.liuht777.scheduler.rule.AssignServerRole;
 import io.github.liuht777.scheduler.util.JsonUtil;
 import io.github.liuht777.scheduler.util.ScheduleUtil;
@@ -26,6 +27,8 @@ import org.springframework.util.ObjectUtils;
 import org.springframework.util.ReflectionUtils;
 
 import java.lang.reflect.Method;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -71,6 +74,71 @@ public class TaskManager implements ApplicationContextAware {
         this.refreshTaskExecutor = new ScheduledThreadPoolExecutor(1,
                 new ThreadFactoryBuilder().setNameFormat("ServerTaskCheckInterval").build());
         this.checkLocalTask();
+    }
+
+    /**
+     * 新增server节点,重新分配任务
+     * 将现有的任务数 除以节点数量，除得尽就不分配，不然就按照商值进行分配
+     */
+    @EventListener
+    public void serverNodeAdd(ServerNodeAddEvent event) throws Exception {
+        final List<String> serverList = zkClient.getTaskGenerator().getSchedulerServer().loadScheduleServerNames();
+        //黑名单
+        for (String ip : zkClient.getSchedulerProperties().getIpBlackList()) {
+            int index = serverList.indexOf(ip);
+            if (index > -1) {
+                serverList.remove(index);
+            }
+        }
+        if (!this.zkClient.getTaskGenerator().getSchedulerServer().isLeader(ScheduleServer.getInstance().getUuid(), serverList)) {
+            log.info("当前server:[" + ScheduleServer.getInstance().getUuid() + "]: 不是负责任务分配的Leader,直接返回");
+            return;
+        }
+        final String path = (String) event.getSource();
+        final String serverId = path.substring(path.lastIndexOf("/") + 1);
+        final List<String> tasks = zkClient.getClient().getChildren().forPath(zkClient.getTaskPath());
+
+        if (tasks.size() <= serverList.size()) {
+            log.info("任务数小于 server 节点数, 不进行任务重新分配");
+            return;
+        }
+        final BigDecimal len = new BigDecimal(tasks.size()).divide(new BigDecimal(serverList.size()), 0, RoundingMode.DOWN);
+        for (int i = 0; i < len.longValue(); i++) {
+            // 分配指定任务给指定server
+            assignTask2Server(tasks.get(i), serverId);
+        }
+    }
+
+    /**
+     * 分配指定任务给指定server
+     *
+     * @param taskName 任务名称
+     * @param serverId server节点
+     */
+    private void assignTask2Server(final String taskName, final String serverId) {
+        final String taskPath = zkClient.getTaskPath() + "/" + taskName;
+        try {
+            final List<String> taskServerIds = zkClient.getClient().getChildren().forPath(taskPath);
+            if (!CollectionUtils.isEmpty(taskServerIds)) {
+                // 任务已分配, 删除分配信息
+                for (String taskServerId : taskServerIds) {
+                    zkClient.getClient().delete().deletingChildrenIfNeeded()
+                            .forPath(taskPath + "/" + taskServerId);
+                }
+            }
+            final String runningInfo = "0:" + System.currentTimeMillis();
+            final String path = taskPath + "/" + serverId;
+            final Stat stat = zkClient.getClient().checkExists().forPath(path);
+            if (stat == null) {
+                zkClient.getClient()
+                        .create()
+                        .withMode(CreateMode.EPHEMERAL)
+                        .forPath(path, runningInfo.getBytes());
+            }
+            log.info("成功分配任务 [" + taskPath + "]" + " 给 server [" + serverId + "]");
+        } catch (Exception e) {
+            log.error("assignTask2Server failed: taskName={}, serverId={}", taskName, serverId, e);
+        }
     }
 
     /**

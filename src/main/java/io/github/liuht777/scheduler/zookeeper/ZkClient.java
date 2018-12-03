@@ -5,6 +5,7 @@ import io.github.liuht777.scheduler.config.TarocoSchedulerProperties;
 import io.github.liuht777.scheduler.core.ScheduleServer;
 import io.github.liuht777.scheduler.core.Version;
 import io.github.liuht777.scheduler.event.AssignScheduleTaskEvent;
+import io.github.liuht777.scheduler.event.ServerNodeAddEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
@@ -187,7 +188,13 @@ public class ZkClient implements ApplicationEventPublisherAware {
                             case CHILD_ADDED:
                                 log.info("监听到节点变化: 新增path=: {}", event.getData().getPath());
                                 // 新增server节点和task节点都需要触发重新分配任务事件
-                                eventPublisher.publishEvent(new AssignScheduleTaskEvent(event.getData().getPath()));
+                                if (event.getData().getPath().startsWith(this.serverPath)) {
+                                    // 新增server节点触发 ServerNodeAddEvent
+                                    eventPublisher.publishEvent(new ServerNodeAddEvent(event.getData().getPath()));
+                                } else {
+                                    // 新增task节点需要触发重新分配任务事件
+                                    eventPublisher.publishEvent(new AssignScheduleTaskEvent(event.getData().getPath()));
+                                }
                                 break;
                             case CHILD_REMOVED:
                                 log.info("监听到节点变化: 删除path=: {}", event.getData().getPath());
