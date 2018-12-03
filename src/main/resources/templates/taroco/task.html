@@ -10,17 +10,76 @@
     <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport"/>
     <link rel="stylesheet" th:href="@{/taroco/css/bootstrap.min.css}" />
     <link rel="stylesheet" th:href="@{/taroco/plugins/bootstrap-table/bootstrap-table.min.css}" />
+    <link rel="stylesheet" th:href="@{/taroco/plugins/bootstrap-validator/bootstrapValidator.min.css}" />
     <script type="text/javascript" th:src="@{/taroco/js/jquery.min.js}"></script>
     <script type="text/javascript" th:src="@{/taroco/js/bootstrap.min.js}"></script>
     <script type="text/javascript" th:src="@{/taroco/plugins/bootstrap-table/bootstrap-table.min.js}"></script>
     <script type="text/javascript" th:src="@{/taroco/plugins/bootstrap-table/bootstrap-table-zh-CN.min.js}"></script>
+    <script type="text/javascript" th:src="@{/taroco/plugins/bootstrap-validator/bootstrapValidator.min.js}"></script>
+    <script type="text/javascript" th:src="@{/taroco/plugins/bootstrap-validator/bootstrapValidator-zh-CN.js}"></script>
+
+    <style>
+        .op-btn {
+            cursor: pointer;
+        }
+    </style>
 </head>
 
 <body>
+    <div class="modal fade" id="taskModal" tabindex="-1" role="dialog" aria-labelledby="taskModalLabel">
+        <div class="modal-dialog" role="document">
+            <form id="taskFrom" th:data="@{/taroco/scheduler/task}" class="form-horizontal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <h4 class="modal-title" id="myModalLabel">添加任务</h4>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="targetBean" class="col-sm-2 control-label">目标Bean</label>
+                            <div class="col-sm-10">
+                                <input type="text" class="form-control" id="targetBean" name="targetBean">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="targetMethod" class="col-sm-2 control-label">目标方法</label>
+                            <div class="col-sm-10">
+                                <input type="text" class="form-control" id="targetMethod" name="targetMethod">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="cronExpression" class="col-sm-2 control-label"><a href="http://cron.qqe2.com/" target="_blank">cron</a>语句</label>
+                            <div class="col-sm-10">
+                                <input type="text" class="form-control" id="cronExpression" name="cronExpression">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="extKeySuffix" class="col-sm-2 control-label">任务后缀</label>
+                            <div class="col-sm-10">
+                                <input type="text" class="form-control" id="extKeySuffix" name="extKeySuffix">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="params" class="col-sm-2 control-label">参数</label>
+                            <div class="col-sm-10">
+                                <input type="text" class="form-control" id="params" name="params">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
+                        <button type="submit" class="btn btn-primary">提 交</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
     <div class="container-fluid">
         <h1>Taroco Scheduler Dashbord</h1>
         <p>集群节点</p>
-        <table id="server">
+        <table id="server"
+               data-toggle="table"
+               data-id-field="name">
             <thead>
                 <tr>
                     <th data-field="index">序号</th>
@@ -37,21 +96,28 @@
             </tbody>
         </table>
         <p></p>
-        <p>集群任务</p>
-        <table id="task">
+        <div class="clearfix" style="margin: 15px 0;line-height: 34px">
+            <p class="pull-left" style="margin-bottom: 0">集群任务</p>
+            <button class="btn btn-primary pull-right" type="button" data-toggle="modal" data-target="#taskModal">新增任务</button>
+        </div>
+        <table id="task"
+               data-toggle="table"
+               data-id-field="key"
+               data-height="620">
             <thead>
             <tr>
                 <th data-field="index">序号</th>
                 <th data-field="targetBean">目标Bean</th>
                 <th data-field="targetMethod">目标方法</th>
                 <th data-field="cronExpression">cron表达式</th>
-                <th data-field="startTime">开始时间</th>
                 <th data-field="period">周期（毫秒）</th>
                 <th data-field="params">参数</th>
                 <th data-field="type">任务类型</th>
                 <th data-field="runTimes">执行次数</th>
+                <th data-field="startTime">开始时间</th>
                 <th data-field="lastRunningTime">最后执行时间</th>
                 <th data-field="status">状态</th>
+                <th data-field="_operate">操作</th>
             </tr>
             </thead>
             <tbody>
@@ -60,22 +126,132 @@
                 <td th:text="${item.targetBean}"></td>
                 <td th:text="${item.targetMethod}"></td>
                 <td th:text="${item.cronExpression}"></td>
-                <td th:text="${item.startTime}"></td>
                 <td th:text="${item.period}"></td>
                 <td th:text="${item.params}"></td>
                 <td th:text="${item.type}"></td>
                 <td th:text="${item.runTimes}"></td>
+                <td th:text="${item.startTime}"></td>
                 <td th:text="${item.lastRunningTime}"></td>
-                <td th:text="${item.status}"></td>
+                <td>
+                    <span th:if="${item.status == 'running'}" class="label label-success">运行中</span>
+                    <span th:if="${item.status == 'stop'}" class="label label-warning">已暂停</span>
+                    <span th:if="${item.status == 'error'}" class="label label-danger" th:title="${item.errorMsg}">出错</span>
+                </td>
+                <td>
+                    <span th:if="${item.status == 'running'}" name="stop" th:data="@{/taroco/scheduler/task/{key}/stop(key=${item.key})}" class="glyphicon glyphicon-stop op-btn" title="暂停" style="color: #eea236"></span>
+                    <span th:if="${item.status == 'stop'}" name="running" th:data="@{/taroco/scheduler/task/{key}/running(key=${item.key})}" class="glyphicon glyphicon-play op-btn" title="启动" style="color: green"></span>
+                    <span name="delete" th:data="@{/taroco/scheduler/task/{key}(key=${item.key})}" class="glyphicon glyphicon-trash op-btn" style="color: red" title="删除"></span>
+                </td>
             </tr>
             </tbody>
         </table>
     </div>
     <script>
         $(function () {
-            $('#server').bootstrapTable();
-            $('#task').bootstrapTable();
+            ajaxClick('delete', 'DELETE');
+            ajaxClick('stop', 'PUT');
+            ajaxClick('running', 'PUT');
+            $('#taskFrom').bootstrapValidator({
+                message: '表单验证失败',
+                feedbackIcons: {
+                    valid: 'glyphicon glyphicon-ok',
+                    invalid: 'glyphicon glyphicon-remove',
+                    validating: 'glyphicon glyphicon-refresh'
+                },
+                fields: {
+                    targetBean: {
+                        message: '目标Bean名称不合法',
+                        validators: {
+                            notEmpty: {
+                                message: '该项为必输项'
+                            },
+                            stringLength: {
+                                min: 3,
+                                max: 30,
+                                message: '长度在3~30个字符之间'
+                            },
+                            regexp: {
+                                regexp: /^[a-z]+([A-Za-z0-9]*)$/,
+                                message: '必须满足驼峰命名格式, 且首字母小写'
+                            }
+                        }
+                    },
+                    targetMethod: {
+                        validators: {
+                            notEmpty: {
+                                message: '该项为必输项'
+                            },
+                            stringLength: {
+                                min: 3,
+                                max: 30,
+                                message: '长度在3~30个字符之间'
+                            },
+                            regexp: {
+                                regexp: /^[a-z]+([A-Za-z0-9]*)$/,
+                                message: '必须满足驼峰命名格式, 且首字母小写'
+                            }
+                        }
+                    },
+                    cronExpression: {
+                        validators: {
+                            notEmpty: {
+                                message: '该项为必输项'
+                            },
+                            regexp: {
+                                regexp: "(((^([0-9]|[0-5][0-9])(\\,|\\-|\\/){1}([0-9]|[0-5][0-9]) )|^([0-9]|[0-5][0-9]) |^(\\* ))((([0-9]|[0-5][0-9])(\\,|\\-|\\/){1}([0-9]|[0-5][0-9]) )|([0-9]|[0-5][0-9]) |(\\* ))((([0-9]|[01][0-9]|2[0-3])(\\,|\\-|\\/){1}([0-9]|[01][0-9]|2[0-3]) )|([0-9]|[01][0-9]|2[0-3]) |(\\* ))((([0-9]|[0-2][0-9]|3[01])(\\,|\\-|\\/){1}([0-9]|[0-2][0-9]|3[01]) )|(([0-9]|[0-2][0-9]|3[01]) )|(\\? )|(\\* )|(([1-9]|[0-2][0-9]|3[01])L )|([1-7]W )|(LW )|([1-7]\\#[1-4] ))((([1-9]|0[1-9]|1[0-2])(\\,|\\-|\\/){1}([1-9]|0[1-9]|1[0-2]) )|([1-9]|0[1-9]|1[0-2]) |(\\* ))(([1-7](\\,|\\-|\\/){1}[1-7])|([1-7])|(\\?)|(\\*)|(([1-7]L)|([1-7]\\#[1-4]))))|(((^([0-9]|[0-5][0-9])(\\,|\\-|\\/){1}([0-9]|[0-5][0-9]) )|^([0-9]|[0-5][0-9]) |^(\\* ))((([0-9]|[0-5][0-9])(\\,|\\-|\\/){1}([0-9]|[0-5][0-9]) )|([0-9]|[0-5][0-9]) |(\\* ))((([0-9]|[01][0-9]|2[0-3])(\\,|\\-|\\/){1}([0-9]|[01][0-9]|2[0-3]) )|([0-9]|[01][0-9]|2[0-3]) |(\\* ))((([0-9]|[0-2][0-9]|3[01])(\\,|\\-|\\/){1}([0-9]|[0-2][0-9]|3[01]) )|(([0-9]|[0-2][0-9]|3[01]) )|(\\? )|(\\* )|(([1-9]|[0-2][0-9]|3[01])L )|([1-7]W )|(LW )|([1-7]\\#[1-4] ))((([1-9]|0[1-9]|1[0-2])(\\,|\\-|\\/){1}([1-9]|0[1-9]|1[0-2]) )|([1-9]|0[1-9]|1[0-2]) |(\\* ))(([1-7](\\,|\\-|\\/){1}[1-7] )|([1-7] )|(\\? )|(\\* )|(([1-7]L )|([1-7]\\#[1-4]) ))((19[789][0-9]|20[0-9][0-9])\\-(19[789][0-9]|20[0-9][0-9])))",
+                                message: 'cron格式错误'
+                            }
+                        }
+                    }
+                }
+            })
+            .on('success.form.bv', function(e) {
+                // Prevent form submission
+                e.preventDefault();
+                // Get the form instance
+                var $form = $(e.target);
+                // Get the BootstrapValidator instance
+                var bv = $form.data('bootstrapValidator');
+                // Use Ajax to submit form data
+                var data = $form.serializeArray();
+                var params = {};
+                for (var i = 0; i < data.length; i++) {
+                    let r = data[i];
+                    params[r.name] = r.value;
+                }
+                $.ajax({
+                    type: 'POST',
+                    url: $form.attr("data"),
+                    contentType: 'application/json;charset=UTF-8',
+                    data: JSON.stringify(params),
+                    success:function (data) {
+                        if(!data){
+                            window.location.reload();
+                        }
+                    }
+                })
+            });
         })
+
+        /**
+         * 绑定异步方法提交事件
+         *
+         * @param name 属性名称
+         * @param type 请求方法类型
+         */
+        function ajaxClick(name,type){
+            $("span[name='"+name+"']").click(function () {
+                $.ajax({
+                    type: type,
+                    url: $(this).attr("data"),
+                    success:function (data) {
+                        if(!data){
+                            window.location.reload();
+                        }
+                    }
+                })
+            })
+        }
     </script>
 </body>
 

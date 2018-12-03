@@ -72,6 +72,11 @@ public class Task {
     private String status = STATUS_RUNNING;
 
     /**
+     * 错误信息
+     */
+    private String errorMsg;
+
+    /**
      * key的后缀
      */
     private String extKeySuffix;
@@ -151,6 +156,9 @@ public class Task {
         }
         if (StringUtils.isNotBlank(task.getExtKeySuffix())) {
             this.extKeySuffix = task.getExtKeySuffix();
+        }
+        if (StringUtils.isNotBlank(task.getErrorMsg())){
+            this.errorMsg = task.getErrorMsg();
         }
     }
 }

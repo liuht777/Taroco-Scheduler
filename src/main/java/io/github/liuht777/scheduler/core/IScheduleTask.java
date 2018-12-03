@@ -29,13 +29,6 @@ public interface IScheduleTask {
     boolean isRunning(String taskName);
 
     /**
-     * 添加或者更新任务
-     *
-     * @param task 任务详情
-     */
-    void addOrUpdate(Task task);
-
-    /**
      * 添加指定任务
      *
      * @param task 任务详情

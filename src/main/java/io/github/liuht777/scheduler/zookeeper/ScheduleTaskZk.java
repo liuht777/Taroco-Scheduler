@@ -60,15 +60,6 @@ public class ScheduleTaskZk implements IScheduleTask {
     }
 
     @Override
-    public void addOrUpdate(final Task task) {
-        if (isExistsTask(task)) {
-            updateTask(task);
-        } else {
-            addTask(task);
-        }
-    }
-
-    @Override
     public boolean saveRunningInfo(String name, String uuid) {
         return saveRunningInfo(name, uuid, null);
     }
@@ -142,6 +133,7 @@ public class ScheduleTaskZk implements IScheduleTask {
                 assert tmpTask != null;
                 tmpTask.valueOf(task);
                 String json = JsonUtil.object2Json(tmpTask);
+                log.info("更新任务: {}", json);
                 this.client.setData().forPath(zkPath, json.getBytes());
             }
         } catch (Exception e) {
@@ -156,6 +148,7 @@ public class ScheduleTaskZk implements IScheduleTask {
             if (this.client.checkExists().forPath(zkPath) != null) {
                 zkPath = zkPath + "/" + task.stringKey();
                 if (this.client.checkExists().forPath(zkPath) != null) {
+                    log.info("删除任务: {}", zkPath);
                     this.client.delete().deletingChildrenIfNeeded().forPath(zkPath);
                 }
             }
@@ -196,7 +189,8 @@ public class ScheduleTaskZk implements IScheduleTask {
                             task.setRunTimes(Integer.valueOf(vals[0]));
                             task.setLastRunningTime(Long.valueOf(vals[1]));
                             if (vals.length > 2 && StringUtils.isNotBlank(vals[2])) {
-                                task.setStatus(STATUS_ERROR + ":" + vals[2]);
+                                task.setStatus(STATUS_ERROR);
+                                task.setErrorMsg(vals[2]);
                             }
                         }
                     }
