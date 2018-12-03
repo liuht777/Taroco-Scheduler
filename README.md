@@ -6,7 +6,7 @@
 
 # 组件架构
 
-![架构图](/exts/taroco scheduler 架构图.jpg "架构图")
+![架构图](/exts/taroco%20scheduler%20架构图.jpg "架构图")
 
 # 功能点概述
 
