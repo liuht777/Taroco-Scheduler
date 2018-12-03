@@ -20,8 +20,8 @@ import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.Trigger;
 import org.springframework.scheduling.support.CronTrigger;
-import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.ObjectUtils;
 import org.springframework.util.ReflectionUtils;
 
 import java.lang.reflect.Method;
@@ -199,7 +199,7 @@ public class TaskManager implements ApplicationContextAware {
             String zkPath = zkClient.getTaskPath();
             List<String> taskNames = zkClient.getClient().getChildren().forPath(zkPath);
             if (CollectionUtils.isEmpty(taskNames)) {
-                log.debug("当前server:[" + currentUuid + "]: 检查本地任务结束, 任务列表为空");
+                log.info("当前server:[" + currentUuid + "]: 检查本地任务结束, 任务列表为空");
                 return;
             }
             List<String> localTasks = new ArrayList<>();
@@ -228,7 +228,7 @@ public class TaskManager implements ApplicationContextAware {
      * 添加并且启动定时任务
      * 需要添加同步锁
      *
-     * @param task  定时任务
+     * @param task 定时任务
      */
     public synchronized void scheduleTask(Task task) {
         log.debug("开始启动任务: " + task.stringKey());
@@ -249,7 +249,7 @@ public class TaskManager implements ApplicationContextAware {
                     task.getParams(),
                     task.getExtKeySuffix());
             TASKS.put(task.stringKey(), task);
-            log.debug("成功添加任务: " + task.stringKey());
+            log.info("添加新任务: " + task.stringKey());
         }
     }
 
@@ -266,7 +266,7 @@ public class TaskManager implements ApplicationContextAware {
                 SCHEDULE_FUTURES.get(name).cancel(true);
                 SCHEDULE_FUTURES.remove(name);
                 TASKS.remove(name);
-                log.info("清理任务: " + name);
+                log.info("清理本地任务: " + name);
             }
         }
     }
@@ -288,7 +288,7 @@ public class TaskManager implements ApplicationContextAware {
      * @param extKeySuffix   任务后缀名
      */
     private void scheduleTask(String targetBean, String targetMethod, String cronExpression,
-                                     Date startTime, Long period, String params, String extKeySuffix) {
+                              Date startTime, Long period, String params, String extKeySuffix) {
         String scheduleKey = ScheduleUtil.buildScheduleKey(targetBean, targetMethod, extKeySuffix);
         try {
             if (!SCHEDULE_FUTURES.containsKey(scheduleKey)) {
@@ -310,11 +310,8 @@ public class TaskManager implements ApplicationContextAware {
                     }
                     if (null != scheduledFuture) {
                         SCHEDULE_FUTURES.put(scheduleKey, scheduledFuture);
-                        log.debug("成功启动动态任务, bean=" + targetBean + ", method=" + targetMethod +", params=" + params);
+                        log.info("成功启动动态任务, bean=" + targetBean + ", method=" + targetMethod + ", params=" + params + ", extKeySuffix=" + extKeySuffix);
                     }
-                } else {
-                    zkClient.getTaskGenerator().getScheduleTask().saveRunningInfo(scheduleKey, ScheduleServer.getInstance().getUuid(), "bean not exists");
-                    log.debug("启动动态任务失败: Bean name is not exists.");
                 }
             }
         } catch (Exception e) {
@@ -327,32 +324,25 @@ public class TaskManager implements ApplicationContextAware {
      */
     private ScheduledMethodRunnable buildScheduledRunnable(String targetBean, String targetMethod, String params, String extKeySuffix) {
         Object bean;
-        ScheduledMethodRunnable scheduledMethodRunnable = null;
+        ScheduledMethodRunnable scheduledMethodRunnable;
+        final String scheduleKey = ScheduleUtil.buildScheduleKey(targetBean, targetMethod, extKeySuffix);
         try {
             bean = applicationContext.getBean(targetBean);
-            scheduledMethodRunnable = buildScheduledRunnable(bean, targetMethod, params, extKeySuffix);
-        } catch (Exception e) {
-            String name = ScheduleUtil.buildScheduleKey(targetBean, targetMethod, extKeySuffix);
-            try {
-                zkClient.getTaskGenerator().getScheduleTask().saveRunningInfo(name, ScheduleServer.getInstance().getUuid(), "method is null");
-            } catch (Exception e1) {
-                log.debug(e.getLocalizedMessage(), e);
-            }
-            log.debug(e.getLocalizedMessage(), e);
+        } catch (BeansException e) {
+            zkClient.getTaskGenerator().getScheduleTask().saveRunningInfo(scheduleKey, ScheduleServer.getInstance().getUuid(), e.getLocalizedMessage());
+            log.error("启动动态任务失败: {}, 失败原因: {}", scheduleKey, e.getLocalizedMessage());
+            log.error(e.getLocalizedMessage(), e);
+            return null;
         }
+        scheduledMethodRunnable = buildScheduledRunnable(bean, targetMethod, params, extKeySuffix, scheduleKey);
         return scheduledMethodRunnable;
     }
 
     /**
      * 封装ScheduledMethodRunnable对象
      */
-    private ScheduledMethodRunnable buildScheduledRunnable(Object bean, String targetMethod, String params, String extKeySuffix) {
-
-        Assert.notNull(bean, "target object must not be null");
-        Assert.hasLength(targetMethod, "Method name must not be empty");
-
+    private ScheduledMethodRunnable buildScheduledRunnable(Object bean, String targetMethod, String params, String extKeySuffix, String scheduleKey) {
         Method method;
-        ScheduledMethodRunnable scheduledMethodRunnable;
         Class<?> clazz;
         if (AopUtils.isAopProxy(bean)) {
             clazz = AopProxyUtils.ultimateTargetClass(bean);
@@ -364,9 +354,12 @@ public class TaskManager implements ApplicationContextAware {
         } else {
             method = ReflectionUtils.findMethod(clazz, targetMethod);
         }
-        Assert.notNull(method, "can not find method named " + targetMethod);
-        scheduledMethodRunnable = new ScheduledMethodRunnable(bean, method, params, extKeySuffix);
-        return scheduledMethodRunnable;
+        if (ObjectUtils.isEmpty(method)) {
+            zkClient.getTaskGenerator().getScheduleTask().saveRunningInfo(scheduleKey, ScheduleServer.getInstance().getUuid(), "method not found");
+            log.error("启动动态任务失败: {}, 失败原因: {}", scheduleKey, "method not found");
+            return null;
+        }
+        return new ScheduledMethodRunnable(bean, method, params, extKeySuffix);
     }
 
     @Override

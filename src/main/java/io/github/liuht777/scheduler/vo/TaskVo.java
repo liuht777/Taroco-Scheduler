@@ -76,6 +76,16 @@ public class TaskVo {
     private String status;
 
     /**
+     * key的后缀
+     */
+    private String extKeySuffix;
+
+    /**
+     * 错误信息
+     */
+    private String errorMsg;
+
+    /**
      * task 转 taskVo
      *
      * @param task
@@ -95,6 +105,8 @@ public class TaskVo {
         taskVo.setCurrentServer(task.getCurrentServer());
         taskVo.setRunTimes(task.getRunTimes());
         taskVo.setStatus(task.getStatus());
+        taskVo.setExtKeySuffix(task.getExtKeySuffix());
+        taskVo.setErrorMsg(task.getErrorMsg());
         return taskVo;
     }
 }

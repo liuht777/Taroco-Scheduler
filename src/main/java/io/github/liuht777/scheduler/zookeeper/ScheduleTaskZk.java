@@ -189,7 +189,8 @@ public class ScheduleTaskZk implements IScheduleTask {
                             task.setRunTimes(Integer.valueOf(vals[0]));
                             task.setLastRunningTime(Long.valueOf(vals[1]));
                             if (vals.length > 2 && StringUtils.isNotBlank(vals[2])) {
-                                task.setStatus(STATUS_ERROR + ":" + vals[2]);
+                                task.setStatus(STATUS_ERROR);
+                                task.setErrorMsg(vals[2]);
                             }
                         }
                     }

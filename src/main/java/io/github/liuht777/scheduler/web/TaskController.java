@@ -75,6 +75,7 @@ public class TaskController {
         task.setTargetMethod(vo.getTargetMethod());
         task.setCronExpression(vo.getCronExpression());
         task.setParams(vo.getParams());
+        task.setExtKeySuffix(vo.getExtKeySuffix());
         task.setStartTime(new Date(System.currentTimeMillis()));
         task.setType(DefaultConstants.TYPE_TAROCO_TASK);
         scheduleTask.addTask(task);
