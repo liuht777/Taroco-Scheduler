@@ -4,11 +4,14 @@ import io.github.liuht777.scheduler.TaskManager;
 import io.github.liuht777.scheduler.ThreadPoolTaskGenerator;
 import io.github.liuht777.scheduler.core.IScheduleTask;
 import io.github.liuht777.scheduler.core.ISchedulerServer;
+import io.github.liuht777.scheduler.rule.AssignServerRole;
+import io.github.liuht777.scheduler.rule.impl.PollingAssignServerRole;
 import io.github.liuht777.scheduler.zookeeper.ScheduleTaskZk;
 import io.github.liuht777.scheduler.zookeeper.SchedulerServerZk;
 import io.github.liuht777.scheduler.zookeeper.ZkClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -53,12 +56,22 @@ public class TarocoSchedulerAutoConfiguration {
     }
 
     /**
+     * 定义 server 选择策略
+     */
+    @Bean
+    @ConditionalOnMissingBean(AssignServerRole.class)
+    public AssignServerRole assignServerRole() {
+        return new PollingAssignServerRole();
+    }
+
+    /**
      * 定义动态任务管理
      *
      */
     @Bean
-    public TaskManager taskManager(ZkClient zkClient) {
-        return new TaskManager(zkClient);
+    public TaskManager taskManager(ZkClient zkClient,
+                                   AssignServerRole assignServerRole) {
+        return new TaskManager(zkClient, assignServerRole);
     }
 
     /**

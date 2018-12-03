@@ -97,6 +97,9 @@ public class ScheduleTaskZk implements IScheduleTask {
     @Override
     public boolean isExistsTask(Task task) {
         String zkPath = this.pathTask + "/" + task.stringKey();
+        if (this.client == null) {
+            return true;
+        }
         try {
             return this.client.checkExists().forPath(zkPath) != null;
         } catch (Exception e) {
